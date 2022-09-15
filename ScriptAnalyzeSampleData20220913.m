@@ -128,17 +128,9 @@ for i = 1:nvideos,
   speed{i} = reshape(speed{i},[T-1,ntrajs(i)]);
 end
 
-% average over flies
-meanspeedpervideo = cell(1,nvideos);
-for i = 1:nvideos,
-  meanspeedpervideo{i} = mean(speed{i},2,'omitnan');
-end
 
-% compute the standard deviation over all flies
-stdspeedpervideo = cell(1,nvideos);
-for i = 1:nvideos,
-  stdspeedpervideo{i} = std(speed{i},0,2,'omitnan');
-end
+% statistics over flies
+[meanspeedpervideo,stderrspeedpervideo] = ComputeMeanStdErrOverFlies(speed);
 
 %% compute the distance to the nearest fly
 
@@ -171,138 +163,34 @@ for i = 1:nvideos,
   end
 end
 
-% compute the average over all flies
-meandist2flypervideo = cell(1,nvideos);
-for i = 1:nvideos,
-  meandist2flypervideo{i} = mean(dist2fly{i},2,'omitnan');
-end
-
-% compute the standard deviation over all flies
-stddist2flypervideo = cell(1,nvideos);
-for i = 1:nvideos,
-  stddist2flypervideo{i} = std(dist2fly{i},0,2,'omitnan');
-end
-
+% compute stats over all flies
+[meandist2flypervideo,stderrdist2flypervideo] = ComputeMeanStdErrOverFlies(dist2fly);
 
 %% plot the flies' speeds for each video
 
 hfig = figure(3);
-clf;
-naxc = 2;
-naxr = ceil(nvideos/naxc);
-maxspeedplot = 70; % limit of the y-axis in mm/s
-lightcolor = [1,.7,.7]; % pink
-plotallflies = false; % whether to plot individual flies
-plotstderr = ~plotallflies; % whether to plot the standard deviation
-
-% one set of axes per video
-hax = gobjects(nvideos,1);
-for i = 1:nvideos,
-  % create the axes
-  hax(i) = subplot(naxr,naxc,i);
-  hold(hax(i),'on');
-
-  % plot when the lights are on
-  for j = 1:numel(activation.startframes{i}),
-    t0 = activation.startframes{i}(j);
-    t1 = activation.endframes{i}(j);
-    patch(hax(i),[t0,t0,t1,t1,t0]/fps,[0,1,1,0,0]*maxspeedplot,lightcolor,'LineStyle','none');
-  end
-
-  % plot the speed for all the flies. this will create a different line for
-  % each fly
-  T = size(data{i},1);
-  if plotallflies,
-    plot(hax(i),(1:T-1)/fps,speed{i}','-');
-    statcolor = 'k';
-  else
-    statcolor = genotypecolors(genotypeidx(i),:);
-  end
-
-  % plot standard error (standard deviation of mean)
-  if plotstderr,
-    stderrcurr = stdspeedpervideo{i}/sqrt(ntrajs(i));
-    plot(hax(i),(1:T-1)/fps,meanspeedpervideo{i}-stderrcurr,'-','Color',statcolor);
-    plot(hax(i),(1:T-1)/fps,meanspeedpervideo{i}+stderrcurr,'-','Color',statcolor);
-  end
-
-  % plot starts of activation periods
-  for j = 1:numel(activation.startframes{i}),
-    t0 = activation.startframes{i}(j);
-    plot(hax(i),[t0,t0]/fps,[0,maxspeedplot],'r-','LineWidth',2);
-  end
-
-  % plot the mean speed over all flies
-  plot(hax(i),(1:T-1)/fps,meanspeedpervideo{i}','-','Linewidth',2,'Color',statcolor);
-
-  title(hax(i),sprintf('Video %d (%s)',i,expnames{i}),'Interpreter','none');
-  box(hax(i),'off');
-end
-% all axes forced to have the same x and y limits
-linkaxes(hax);
-xlabel(hax(end),'Time (s)');
-ylabel(hax(end),'Speed (mm/s)');
-set(hax,'YLim',[0,maxspeedplot],'XLim',[0,(T+1)/fps])
+PlotFeatureOverTime(speed,activation,fps,...
+  'featlabel','Speed (mm/s)',...
+  'plotallflies',false,'plotstderr',true,...
+  'genotypeidx',genotypeidx,...
+  'meanfeat',meanspeedpervideo,...
+  'stderrfeat',stderrspeedpervideo,...
+  'expnames',expnames,...
+  'maxfeatplot',70);
 
 %% plot the distance apart for each fly over the videos
 
 hfig = figure(4);
-clf;
-mindistplot = 0; % limits of the y-axis in mm
-maxdistplot = 15;
-plotallflies = false; % whether to plot individual flies
-plotstderr = ~plotallflies; % whether to plot the standard deviation
-lightcolor = [1,.7,.7]; % pink
+PlotFeatureOverTime(dist2fly,activation,fps,...
+  'featlabel','Inter-fly dist. (mm)',...
+  'plotallflies',false,'plotstderr',true,...
+  'genotypeidx',genotypeidx,...
+  'meanfeat',meandist2flypervideo,...
+  'stderrfeat',stderrdist2flypervideo,...
+  'expnames',expnames,...
+  'maxfeatplot',15,...
+  'minfeatplot',0);
 
-% one set of axes per video
-hax = gobjects(nvideos,1);
-for i = 1:nvideos,
-  % create the axes
-  hax(i) = subplot(nvideos,1,i);
-  hold(hax(i),'on');
-
-  % plot when the lights are on
-  for j = 1:numel(activation.startframes{i}),
-    t0 = activation.startframes{i}(j);
-    t1 = activation.endframes{i}(j);
-    patch(hax(i),[t0,t0,t1,t1,t0]/fps,...
-      [mindistplot,maxdistplot,maxdistplot,mindistplot,mindistplot],...
-      lightcolor,'LineStyle','none');
-  end
-
-  % plot the inter-fly distance for all the flies. this will create a
-  % different line for each fly
-  if plotallflies,
-    plot(hax(i),(1:T)/fps,dist2fly{i}','-');
-    statcolor = 'k';
-  else
-    statcolor = genotypecolors(genotypeidx(i),:);
-  end
-  % plot standard error (standard deviation of mean)
-  if plotstderr,
-    stderrcurr = stddist2flypervideo{i}/sqrt(ntrajs(i));
-    plot(hax(i),(1:T)/fps,meandist2flypervideo{i}-stderrcurr,'-','Color',statcolor);
-    plot(hax(i),(1:T)/fps,meandist2flypervideo{i}+stderrcurr,'-','Color',statcolor);
-  end
-
-  % plot starts of activation periods
-  for j = 1:numel(activation.startframes{i}),
-    t0 = activation.startframes{i}(j);
-    plot(hax(i),[t0,t0]/fps,[mindistplot,maxdistplot],'r-','LineWidth',2);
-  end
-
-  % plot the mean inter-fly distance over all flies
-  plot(hax(i),(1:T)/fps,meandist2flypervideo{i}','-','Linewidth',2,'Color',statcolor);
-
-  title(hax(i),sprintf('Video %d (%s)',i,expnames{i}),'Interpreter','none');
-  box(hax(i),'off');
-end
-
-% all axes forced to have the same x and y limits
-linkaxes(hax);
-xlabel(hax(end),'Time (s)');
-ylabel(hax(end),'Inter-fly distance (mm)');
-set(hax,'YLim',[mindistplot,maxdistplot],'XLim',[0,(T+1)/fps])
 
 %% plot the speeds when the LED turns on
 
@@ -342,7 +230,7 @@ for i = 1:nvideos,
       statcolor = genotypecolors(genotypeidx(i),:);
     end
     if plotstderr,
-      stderrcurr = stdspeedpervideo{i}(t0:t1)/sqrt(ntrajs(i));
+      stderrcurr = stderrspeedpervideo{i}(t0:t1)/sqrt(ntrajs(i));
       plot(hax(i,j),(t0-t:t1-t)/fps,meanspeedpervideo{i}(t0:t1)-stderrcurr,'-','Color',statcolor);
       plot(hax(i,j),(t0-t:t1-t)/fps,meanspeedpervideo{i}(t0:t1)+stderrcurr,'-','Color',statcolor);
     end

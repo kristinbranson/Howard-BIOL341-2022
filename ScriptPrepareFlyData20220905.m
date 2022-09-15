@@ -366,6 +366,8 @@ for i = 1:numel(expdirs),
   end
   if idxon(end) == non,
     t1 = size(data{i},1);
+  else 
+    t1 = activation.startframes{i}(idxon(end)+1)-1;
   end
 
   datastartframes(i) = t0;
