@@ -71,8 +71,7 @@ end
 
 % which frames do these times correspond to
 moviefile = fullfile(expdir,moviefilestr);
-[~,~,fid,headerinfo] = get_readframe_fcn(moviefile);
-fclose(fid);
+headerinfo = ufmf_read_header(moviefile);
 
 startframes = nan(size(starttimes));
 endframes = nan(size(starttimes));
