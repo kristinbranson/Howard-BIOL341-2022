@@ -1,4 +1,4 @@
-function [meanfeat,stderrfeat] = ComputeMeanStdErrOverFlies(feat)
+function [meanfeat,stderrfeat] = ComputeMeanStdErrVideo(feat)
 
 nvideos = numel(feat);
 

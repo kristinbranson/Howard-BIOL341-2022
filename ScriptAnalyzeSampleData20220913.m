@@ -22,6 +22,18 @@ genotypes = [genotypes{:}];
 
 genotypecolors = lines(numel(genotypes)/2);
 
+minspeed_plot = 0;
+maxspeed_plot = 70;
+
+mindist2fly_plot = 0;
+maxdist2fly_plot = 15;
+
+nframespre_speed = 1*fps;
+nframespost_speed = 5*fps;
+
+nframespre_dist2fly = 5*fps;
+nframespost_dist2fly = 30*fps;
+
 
 % data: tracked positions of the flies in sample videos.
 % data is a cell with an entry for each video. data{i} is a matrix of size 
@@ -66,17 +78,15 @@ genotypecolors = lines(numel(genotypes)/2);
 
 % change these parameters to change which video, which fly, and which
 % frames we are plotting
-t0 = 1; % start frame to plot
-nframesplot = 3*60*fps; % number of frames to plot
 videoi = 1; % which video to plot
 fly = 8; % which fly to plot
 
 hfig = figure(1);
 clf;
-t1 = min(size(data{videoi},1),t0 + nframesplot - 1);
-plot(data{videoi}(t0:t1,XIDX,fly),data{videoi}(t0:t1,YIDX,fly),'k-');
+T = size(data{videoi},1);
+plot(data{videoi}(:,XIDX,fly),data{videoi}(:,YIDX,fly),'k-');
 hold on;
-scatter(data{videoi}(t0:t1,XIDX,fly),data{videoi}(t0:t1,YIDX,fly),[],(t0:t1)/fps,'.');
+scatter(data{videoi}(:,XIDX,fly),data{videoi}(:,YIDX,fly),[],(1:T)/fps,'.');
 axis equal;
 axis(ARENARADIUS_MM*[-1,1,-1,1]);
 hcb = colorbar;
@@ -98,8 +108,12 @@ clf;
 hax = gobjects(nfeat);
 % loop over trajectory features
 for i = 1:nfeat,
+  T = size(data{videoi},1);
   % create the axes
   hax(i) = subplot(nfeat,1,i);
+  hold(hax(i),'on');
+  ylim = [min(data{videoi}(:,i,fly)),max(data{videoi}(:,i,fly))];
+  PlotActivationTimePatch(activation.startframes{videoi},activation.endframes{videoi},fps,ylim,hax(i));
   % plot the feature for the selected video and fly
   plot((1:T)/fps,data{videoi}(:,i,fly),'k-');
   xlabel('Time (s)');
@@ -128,9 +142,8 @@ for i = 1:nvideos,
   speed{i} = reshape(speed{i},[T-1,ntrajs(i)]);
 end
 
-
 % statistics over flies
-[meanspeedpervideo,stderrspeedpervideo] = ComputeMeanStdErrOverFlies(speed);
+[meanspeed,stderrspeed] = ComputeMeanStdErrVideo(speed);
 
 %% compute the distance to the nearest fly
 
@@ -164,281 +177,102 @@ for i = 1:nvideos,
 end
 
 % compute stats over all flies
-[meandist2flypervideo,stderrdist2flypervideo] = ComputeMeanStdErrOverFlies(dist2fly);
+[meandist2fly,stderrdist2fly] = ComputeMeanStdErrVideo(dist2fly);
 
 %% plot the flies' speeds for each video
 
 hfig = figure(3);
-PlotFeatureOverTime(speed,activation,fps,...
+PlotFeatureOverVideo(speed,meanspeed,activation,fps,...
   'featlabel','Speed (mm/s)',...
   'plotallflies',false,'plotstderr',true,...
   'genotypeidx',genotypeidx,...
-  'meanfeat',meanspeedpervideo,...
-  'stderrfeat',stderrspeedpervideo,...
+  'stderrfeat',stderrspeed,...
   'expnames',expnames,...
-  'maxfeatplot',70);
+  'maxfeatplot',maxspeed_plot,...
+  'minfeatplot',minspeed_plot);
 
 %% plot the distance apart for each fly over the videos
 
 hfig = figure(4);
-PlotFeatureOverTime(dist2fly,activation,fps,...
+PlotFeatureOverVideo(dist2fly,meandist2fly,activation,fps,...
   'featlabel','Inter-fly dist. (mm)',...
   'plotallflies',false,'plotstderr',true,...
   'genotypeidx',genotypeidx,...
-  'meanfeat',meandist2flypervideo,...
-  'stderrfeat',stderrdist2flypervideo,...
+  'stderrfeat',stderrdist2fly,...
   'expnames',expnames,...
-  'maxfeatplot',15,...
-  'minfeatplot',0);
-
+  'maxfeatplot',maxdist2fly_plot,...
+  'minfeatplot',mindist2fly_plot);
 
 %% plot the speeds when the LED turns on
 
-nframespre_plot = 1*fps; % how much before the lights on to plot
-nframespost_plot = 5*fps; % how much after the lights on to plot
-nstimuliplot = 13; % how many stimulus periods to plot, should be a number between 1 and 13
-maxspeedplot = 40; % maximum speed to plot
-plotallflies = false; % whether to plot individual flies
-plotstderr = ~plotallflies; % whether to plot the standard deviation
-
 hfig = figure(5);
 clf;
-% row of axes for each video, column for each stimulus period
-hax = gobjects(nvideos,nstimuliplot);
-
-for i = 1:nvideos,
-  for j = 1:nstimuliplot,
-    if j > numel(activation.startframes{i}),
-      continue;
-    end
-
-    % which axes to plot in
-    axi = sub2ind([nstimuliplot,nvideos],j,i);
-    hax(i,j) = subplot(nvideos,nstimuliplot,axi);
-
-    % which frames to plot
-    t = activation.startframes{i}(j);
-    t0 = max(1,t-nframespre_plot);
-    t1 = min(T,t+nframespost_plot);
-
-    hold(hax(i,j),'on');
-    % plot each fly
-    if plotallflies,
-      plot(hax(i,j),(t0-t:t1-t)/fps,speed{i}(t0:t1,:)','-');
-      statcolor = 'k';
-    else
-      statcolor = genotypecolors(genotypeidx(i),:);
-    end
-    if plotstderr,
-      stderrcurr = stderrspeedpervideo{i}(t0:t1)/sqrt(ntrajs(i));
-      plot(hax(i,j),(t0-t:t1-t)/fps,meanspeedpervideo{i}(t0:t1)-stderrcurr,'-','Color',statcolor);
-      plot(hax(i,j),(t0-t:t1-t)/fps,meanspeedpervideo{i}(t0:t1)+stderrcurr,'-','Color',statcolor);
-    end
-
-    % plot a vertical line when the lights turn on
-    plot(hax(i,j),[0,0],[0,maxspeedplot],'r-');
-    % plot the average speed of all flies
-    if plotallflies,
-      lw = 2;
-    else
-      lw = 1;
-    end
-    plot(hax(i,j),(t0-t:t1-t)/fps,meanspeedpervideo{i}(t0:t1)','-','LineWidth',lw,'color',statcolor);
-
-    % only show which stimulus this is in the top row of axes
-    if i == 1,
-      title(hax(i,j),sprintf('Stimulus %d',j));
-    end
-    box(hax(i,j),'off');
-  end
-  % only show which video this is in the left column of axes
-  ylabel(hax(i,1),sprintf('Video %d',i));
-end
-
-% force axes to share the same x and y limits
-linkaxes(hax(ishandle(hax)));
-ylabel(hax(end,1),{'Speed (mm/s)',sprintf('Video %d',nvideos)});
-xlabel(hax(end,1),'Time (s)');
-set(hax(ishandle(hax)),'YLim',[0,maxspeedplot],'XLim',[-nframespre_plot,nframespost_plot]/fps);
-
+PlotFeatureOverIntervals(speed,meanspeed,activation,fps,...
+  'featlabel','Speed (mm/s)',...
+  'plotallflies',false,'plotstderr',true,...
+  'genotypeidx',genotypeidx,...
+  'stderrfeat',stderrspeed,...
+  'maxfeatplot',maxspeed_plot,...
+  'minfeatplot',minspeed_plot,...
+  'nframespre_plot',nframespre_speed,...
+  'nframespost_plot',nframespost_speed,...
+  'expnames',expnames);
 
 %% plot the inter-fly distances when the LED turns on
 
-nframespre_plot = 5*fps; % how much before the lights on to plot
-nframespost_plot = 30*fps; % how much after the lights on to plot
-nstimuliplot = 13; % how many stimulus periods to plot, should be a number between 1 and 13
-mindistplot = 0; % limits of the y-axis in mm
-maxdistplot = 15;
-plotallflies = false; % whether to plot individual flies
-plotstderr = ~plotallflies; % whether to plot the standard deviation
-
 hfig = figure(6);
 clf;
+PlotFeatureOverIntervals(dist2fly,meandist2fly,activation,fps,...
+  'featlabel','Inter-fly dist. (mm)',...
+  'plotallflies',false,'plotstderr',true,...
+  'genotypeidx',genotypeidx,...
+  'stderrfeat',stderrdist2fly,...
+  'maxfeatplot',maxdist2fly_plot,...
+  'minfeatplot',mindist2fly_plot,...
+  'nframespre_plot',nframespre_dist2fly,...
+  'nframespost_plot',nframespost_dist2fly,...
+  'expnames',expnames);
 
-% row of axes for each video, column for each stimulus period
-hax = gobjects(nvideos,nstimuliplot);
+%% compute the average speed at LED onset
 
-for i = 1:nvideos,
-  for j = 1:nstimuliplot,
-    if j > numel(activation.startframes{i}),
-      continue;
-    end
-    % which axes to plot in
-    axi = sub2ind([nstimuliplot,nvideos],j,i);
-    hax(i,j) = subplot(nvideos,nstimuliplot,axi);
+[meanspeed_interval,stderrspeed_interval] = ...
+  ComputeMeanStdErrIntervals(speed,activation,...
+  'nframespre',nframespre_speed,'nframespost',nframespost_speed);
 
-    % which frames to plot
-    t = activation.startframes{i}(j);
-    t0 = max(1,t-nframespre_plot);
-    t1 = min(T,t+nframespost_plot);
-    
-    hold(hax(i,j),'on');
+%% compute the average distance apart at LED onset
 
-    % plot a line for each fly
-    if plotallflies,
-      plot(hax(i,j),(t0-t:t1-t)/fps,dist2fly{i}(t0:t1,:)','-');
-      statcolor = 'k';
-    else
-      statcolor = genotypecolors(genotypeidx(i),:);
-    end
-    % plot standard error
-    if plotstderr,
-      stderrcurr = stddist2flypervideo{i}(t0:t1)/sqrt(ntrajs(i));
-      plot(hax(i,j),(t0-t:t1-t)/fps,meandist2flypervideo{i}(t0:t1)-stderrcurr,'-','Color',statcolor);
-      plot(hax(i,j),(t0-t:t1-t)/fps,meandist2flypervideo{i}(t0:t1)+stderrcurr,'-','Color',statcolor);
-    end
+[meandist2fly_interval,stderrdist2fly_interval] = ...
+  ComputeMeanStdErrIntervals(dist2fly,activation,...
+  'nframespre',nframespre_dist2fly,'nframespost',nframespost_dist2fly);
 
-    % plot a vertical line indicating lights on time
-    plot(hax(i,j),[0,0],[mindistplot,maxdistplot],'r-');
 
-    % plot average over flies
-    if plotallflies,
-      lw = 2;
-    else
-      lw = 1;
-    end
-    plot(hax(i,j),(t0-t:t1-t)/fps,meandist2flypervideo{i}(t0:t1)','-','LineWidth',lw,'Color',statcolor);
-
-    % only show which stimulus this is in the top row of axes
-    if i == 1,
-      title(hax(i,j),sprintf('Stimulus %d',j));
-    end
-    box(hax(i,j),'off');
-  end
-  % only show which video this is in the left column of axes
-  ylabel(hax(i,1),sprintf('Video %d',i));
-end
-
-% force all axes to share the same x and y limits
-linkaxes(hax(ishandle(hax)));
-
-ylabel(hax(end,1),{'Inter-fly distance (mm)',sprintf('Video %d',nvideos)});
-xlabel(hax(end,1),'Time (s)');
-set(hax(ishandle(hax)),'YLim',[mindistplot,maxdistplot],'XLim',[-nframespre_plot,nframespost_plot]/fps);
-
-%% plot the average speed over all stimuli
-
-nframespre_plot = 1*fps; % how much before the lights on to plot
-nframespost_plot = 5*fps; % how much after the lights on to plot
-maxspeedplot = 25; % maximum speed to plot
-plotstderr = true; % whether to plot the standard error
+%% plot the average speed at LED onset
 
 hfig = figure(7);
 clf;
+hax = PlotMeanFeatureOverIntervals(meanspeed_interval,...
+  stderrspeed_interval,fps,...
+  nframespre_speed,nframespost_speed,...
+  'featlabel','Speed (mm/s)',...
+  'genotypeidx',genotypeidx,...
+  'maxfeatplot',maxspeed_plot,...
+  'minfeatplot',minspeed_plot,...
+  'expnames',expnames);
 
-hax = gobjects(nvideos,1);
-for i = 1:nvideos,
+%set(hax,'yscale','log');
 
-  videocolor = genotypecolors(genotypeidx(i),:);
-  meanspeedon = zeros(nframespre_plot+nframespost_plot+1,1);
-  count = zeros(nframespre_plot+nframespost_plot+1,1);
-  for j = 1:numel(activation.startframes{i}),
-    t = activation.startframes{i}(j);
-    t0 = max(1,t-nframespre_plot);
-    t1 = min(T,t+nframespost_plot);
-    i0 = t0-(t-nframespre_plot) + 1;
-    i1 = i0 + (t1-t0); 
-    meanspeedon(i0:i1) = meanspeedon(i0:i1) + sum(speed{i}(t0:t1,:),2,'omitnan');
-    count(i0:i1) = count(i0:i1) + sum(~isnan(speed{i}(t0:t1,:)),2);
-  end
-  meanspeedon = meanspeedon ./ count;
-  stdspeedon = zeros(nframespre_plot+nframespost_plot+1,1);
-  for j = 1:numel(activation.startframes{i}),
-    t = activation.startframes{i}(j);
-    t0 = max(1,t-nframespre_plot);
-    t1 = min(T,t+nframespost_plot);
-    i0 = t0-(t-nframespre_plot) + 1;
-    i1 = i0 + (t1-t0); 
-    stdspeedon(i0:i1) = stdspeedon(i0:i1) + sum((speed{i}(t0:t1,:)-meanspeedon(i0:i1)).^2,2,'omitnan');
-  end
-  stdspeedon = sqrt(stdspeedon ./ count);
-  hax(i) = subplot(nvideos,1,i);
-  plot([0,0],[0,maxspeedplot],'k-');
-  hold on;
-
-  if plotstderr,
-    plot((-nframespre_plot:nframespost_plot)/fps,meanspeedon-stdspeedon./max(1,sqrt(count)),'-','Color',videocolor);
-    plot((-nframespre_plot:nframespost_plot)/fps,meanspeedon+stdspeedon./max(1,sqrt(count)),'-','Color',videocolor);
-  end
-  plot((-nframespre_plot:nframespost_plot)/fps,meanspeedon,'-','Color',videocolor,'LineWidth',2);
-  title(sprintf('Video %d: %s',i,expnames{i}),'Interpreter','none');
-end
-ylabel(hax(end),'Speed (mm/s)');
-xlabel(hax(end),'Time (s)');
-set(hax,'YLim',[0,maxspeedplot],'XLim',[-nframespre_plot,nframespost_plot]/fps);
-
-%% plot the average inter fly distance over all stimuli
-
-nframespre_plot = 5*fps; % how much before the lights on to plot
-nframespost_plot = 30*fps; % how much after the lights on to plot
-nstimuliplot = 13; % how many stimulus periods to plot, should be a number between 1 and 13
-mindistplot = 0; % limits of the y-axis in mm
-maxdistplot = 15;
-plotstderr = true; % whether to plot the standard error
+%% plot the average inter-fly distance at LED onset
 
 hfig = figure(8);
 clf;
-
-hax = gobjects(nvideos,1);
-for i = 1:nvideos,
-
-  videocolor = genotypecolors(genotypeidx(i),:);
-  meandist2flyon = zeros(nframespre_plot+nframespost_plot+1,1);
-  count = zeros(nframespre_plot+nframespost_plot+1,1);
-  for j = 1:numel(activation.startframes{i}),
-    t = activation.startframes{i}(j);
-    t0 = max(1,t-nframespre_plot);
-    t1 = min(T,t+nframespost_plot);
-    i0 = t0-(t-nframespre_plot) + 1;
-    i1 = i0 + (t1-t0); 
-    meandist2flyon(i0:i1) = meandist2flyon(i0:i1) + sum(dist2fly{i}(t0:t1,:),2,'omitnan');
-    count(i0:i1) = count(i0:i1) + sum(~isnan(dist2fly{i}(t0:t1,:)),2);
-  end
-  meandist2flyon = meandist2flyon ./ count;
-  stddist2flyon = zeros(nframespre_plot+nframespost_plot+1,1);
-  for j = 1:numel(activation.startframes{i}),
-    t = activation.startframes{i}(j);
-    t0 = max(1,t-nframespre_plot);
-    t1 = min(T,t+nframespost_plot);
-    i0 = t0-(t-nframespre_plot) + 1;
-    i1 = i0 + (t1-t0); 
-    stddist2flyon(i0:i1) = stddist2flyon(i0:i1) + sum((dist2fly{i}(t0:t1,:)-meandist2flyon(i0:i1)).^2,2,'omitnan');
-  end
-  stddist2flyon = sqrt(stddist2flyon ./ count);
-  hax(i) = subplot(nvideos,1,i);
-  plot([0,0],[mindistplot,maxdistplot],'k-');
-  hold on;
-
-  if plotstderr,
-    plot((-nframespre_plot:nframespost_plot)/fps,meandist2flyon-stddist2flyon./max(1,sqrt(count)),'-','Color',videocolor);
-    plot((-nframespre_plot:nframespost_plot)/fps,meandist2flyon+stddist2flyon./max(1,sqrt(count)),'-','Color',videocolor);
-  end
-  plot((-nframespre_plot:nframespost_plot)/fps,meandist2flyon,'-','Color',videocolor,'LineWidth',2);
-  title(sprintf('Video %d: %s',i,expnames{i}),'Interpreter','none');
-end
-ylabel(hax(end),'Inter-fly distance (mm)');
-xlabel(hax(end),'Time (s)');
-set(hax,'YLim',[mindistplot,maxdistplot],'XLim',[-nframespre_plot,nframespost_plot]/fps);
+hax = PlotMeanFeatureOverIntervals(meandist2fly_interval,...
+  stderrdist2fly_interval,fps,...
+  nframespre_dist2fly,nframespost_dist2fly,...
+  'featlabel','Inter-fly dist. (mm)',...
+  'genotypeidx',genotypeidx,...
+  'maxfeatplot',maxdist2fly_plot,...
+  'minfeatplot',mindist2fly_plot,...
+  'expnames',expnames);
 
 %% histogram speed during on and off periods
 
@@ -487,13 +321,14 @@ for i = 1:nvideos,
 
   speedhistcurr = zeros(numel(bincenters),numel(onstarts),ntrajs(i));
   isdatacurr = false(numel(onstarts),ntrajs(i));
+  T = size(speed{i},1);
 
   % histogram each on interval for each fly
   for j = 1:numel(onstarts),
     % which frames to histogram
     t = onstarts(j);
-    t0 = min(T-1,max(1,t+t0_on));
-    t1 = min(T-1,max(1,t+t1_on));
+    t0 = min(T,max(1,t+t0_on));
+    t1 = min(T,max(1,t+t1_on));
 
     for k = 1:ntrajs(i),
 
@@ -527,8 +362,8 @@ for i = 1:nvideos,
   for j = 1:numel(offstarts),
     % which frames to histogram
     t = offstarts(j);
-    t0 = min(T-1,max(1,t+t0_off));
-    t1 = min(T-1,max(1,t+t1_off));
+    t0 = min(T,max(1,t+t0_off));
+    t1 = min(T,max(1,t+t1_off));
 
     for k = 1:ntrajs(i),
 

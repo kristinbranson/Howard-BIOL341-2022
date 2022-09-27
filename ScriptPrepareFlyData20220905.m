@@ -339,7 +339,7 @@ end
 
 pulsefrac = 1;
 actintensity = 'max';
-startofftime = 10*fps;
+startofftime = 0*fps;
 
 datastartframes = nan(1,numel(expdirs));
 dataendframes = nan(1,numel(expdirs));
