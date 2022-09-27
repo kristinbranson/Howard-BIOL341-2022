@@ -1,0 +1,45 @@
+﻿<!DOCTYPE html>
+<html>	
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlyTracker Tutorial</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<style>
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1 id="flytracker-tutorial">FlyTracker tutorial</h1>
+<ol>
+<li>In MATLAB, navigate to the <code>FlyTracker</code> directory.</li>
+<li>At the MATLAB prompt, type <code>tracker</code>. This will open the FlyTracker GUI.</li>
+<li>Click <strong>VIDEO folder</strong> to select the <em>experiment directory</em> containing your video (<code>movie.ufmf</code>).<a href="ScreenShotSelectVideo.png"><img src="ScreenShotSelectVideo.png" alt="Screenshot of the FlyTracker dialog"></a></li>
+<li>Click <strong>CALIBRATE</strong> to set parameters.</li>
+<li>In the <em>Calibrator</em> drag the line to match the diameter of the arena. Set the <strong>length of ruler (mm)</strong> to be <strong>53.371</strong>, the diameter of the arena. This is how we tell FlyTracker how to convert from pixels to millimeters. <a href="ScreenShotPx2mm.png"><img src="ScreenShotPx2mm.png" alt="Screenshot of setting the pixel to millimeter conversion ratio."></a></li>
+<li>Click <strong>continue</strong>. FlyTracker will estimate what the arena would look like if no flies were in it (Background model). <a href="ScreenShotBackgroundModel.png"><img src="ScreenShotBackgroundModel.png" alt="Background model computed by FlyTracker."></a></li>
+<li>Click <strong>detect</strong> to automatically detect the circular arena. Check that the plotted blue circle matches the true arena wall. FlyTracker will ignore everything outside of this circle, for instance the indicator LED telling us when the red lights are on. <a href="ScreenShotDetectChambers.png"><img src="ScreenShotDetectChambers.png" alt="enter image description here"></a></li>
+<li>Count how many flies are in your arena, and check that the <strong># flies per chamber</strong> is accurate.</li>
+<li>Click <strong>continue</strong>.</li>
+<li>Check that the classification of pixels into <em>body</em>, <em>wings</em>, <em>legs</em>, and <em>other</em> (background) is accurate. Click <strong>random</strong> to go to a different, randomly chosen frame. Change <strong>overlay size</strong> to <em>none</em> to see what the original image looks like. We have <strong>not</strong> needed to adjust the parameters under Parameter tuning, but you can see how this affects your classification. You can click the <strong>~</strong> button to go back to the defaults. <a href="ScreenShotParameterTuning.png"><img src="ScreenShotParameterTuning.png" alt="Screenshot of pixel classification."></a></li>
+<li>Click <strong>FINISH</strong> to finish setting parameters. Notice that your calibration parameters and background model were saved to your <strong>OUTPUT folder</strong>.</li>
+<li>Set the multi-processing parameters. We suggest using <strong>4 chunks</strong> and <strong>4 cores</strong>.</li>
+<li>Select <strong>save JAABA folders</strong> to save data for use in JAABA.<br>
+<a href="ScreenShotFinalTrackParameters.png"><img src="ScreenShotFinalTrackParameters.png" alt="Final tracking parameters"></a></li>
+<li>Click <strong>TRACK</strong> and wait!<br>
+<a href="ScreenShotPleaseWait.png"><img src="ScreenShotPleaseWait.png" alt="Screenshot of wait window"></a></li>
+<li>When tracking is complete, you can look at the output with the visualizer. Type <code>visualizer</code> at the MATLAB prompt.</li>
+<li>This will open the <strong>Visualizer</strong> GUI. Select the video you tracked under the <strong>Video -&gt; Open</strong> menu. <a href="ScreenShotVisualizer.png"><img src="ScreenShotVisualizer.png" alt="Screenshot of visualizer GUI."></a></li>
+<li>There is a lot of functionality in this GUI that we will ignore. We suggest examining the tracking by looking at different frames (e.g. by moving the slider bar) or clicking the play button.</li>
+</ol>
+</div>
+</body>
+
+</html>

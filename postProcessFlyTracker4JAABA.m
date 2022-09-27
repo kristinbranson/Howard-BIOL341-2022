@@ -8,7 +8,7 @@ thresh_female_a_mm = .64; % min quarter major axis length for female flies
   procflytrackerfilestr,perframedirstr,...
   indicatorfilestr,...
   maxFlyTrackerNanInterpFrames,...
-  thresh_female_a_mm,...
+  thresh_female_a_mm,metadatafilestr,...
   leftovers] = ...
   myparse_nocheck(varargin,'trxfilestr','movie/movie_JAABA/trx.mat',...
   'flytrackerstr','movie/movie-track.mat',...
@@ -18,7 +18,8 @@ thresh_female_a_mm = .64; % min quarter major axis length for female flies
   'perframedirstr','perframe',...
   'indicatorfilestr','indicatordata.mat',...
   'maxFlyTrackerNanInterpFrames',maxFlyTrackerNanInterpFrames,...
-  'thresh_female_a_mm',thresh_female_a_mm);
+  'thresh_female_a_mm',thresh_female_a_mm,...
+  'metadatafilestr','Metadata.xml');
 
 intrxfile = fullfile(expdir,intrxfilestr);
 assert(exist(intrxfile,'file')>0);
@@ -159,6 +160,9 @@ for i = 1:numel(trxin),
   
 end
 
+metadatafile = fullfile(expdir,metadatafilestr);
+metadata = ReadMetadataFile(metadatafile);
+
 for i = 1:numel(trxout),
   trxout(i).dt = diff(trxout(i).timestamps); %#ok<AGROW>
   % center on arena center
@@ -168,11 +172,15 @@ for i = 1:numel(trxout),
     fn = fns_perframe{j};
     trxout(i).(fn) = trxout(i).(fn)(:)';
   end
-  median_a_mm = median(trxout(i).a_mm,'omitnan');
-  if median_a_mm >= thresh_female_a_mm,
-    trxout(i).sex = 'f'; %#ok<AGROW> 
+  if strcmpi(metadata.gender,'b'),
+    median_a_mm = median(trxout(i).a_mm,'omitnan');
+    if median_a_mm >= thresh_female_a_mm,
+      trxout(i).sex = 'f'; %#ok<AGROW>
+    else
+      trxout(i).sex = 'm'; %#ok<AGROW>
+    end
   else
-    trxout(i).sex = 'm'; %#ok<AGROW> 
+    trxout(i).sex = metadata.gender; %#ok<AGROW> 
   end
 end
 
