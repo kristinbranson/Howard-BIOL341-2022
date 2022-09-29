@@ -1,14 +1,21 @@
 function res = postProcessFlyTracker4JAABA(expdir,varargin)
 
+codedir = fileparts(mfilename('fullpath'));
+settingsdir = fullfile(codedir,'settings');
+
+if ~exist('hmm_multiseq_1d','var'),
+  addpath(fullfile(codedir,'hmm'));
+end
+
 maxFlyTrackerNanInterpFrames = 5;
-thresh_female_a_mm = .64; % min quarter major axis length for female flies
 
 [intrxfilestr,inflytrackerstr,...
   calibfilestr,proctrxfilestr,...
   procflytrackerfilestr,perframedirstr,...
   indicatorfilestr,...
   maxFlyTrackerNanInterpFrames,...
-  thresh_female_a_mm,metadatafilestr,...
+  metadatafilestr,...
+  nmale,...
   leftovers] = ...
   myparse_nocheck(varargin,'trxfilestr','movie/movie_JAABA/trx.mat',...
   'flytrackerstr','movie/movie-track.mat',...
@@ -18,8 +25,8 @@ thresh_female_a_mm = .64; % min quarter major axis length for female flies
   'perframedirstr','perframe',...
   'indicatorfilestr','indicatordata.mat',...
   'maxFlyTrackerNanInterpFrames',maxFlyTrackerNanInterpFrames,...
-  'thresh_female_a_mm',thresh_female_a_mm,...
-  'metadatafilestr','Metadata.xml');
+  'metadatafilestr','Metadata.xml',...
+  'nmale',[]);
 
 intrxfile = fullfile(expdir,intrxfilestr);
 assert(exist(intrxfile,'file')>0);
@@ -58,6 +65,12 @@ sourceid = [];
 ninterpframes = 0;
 for i = 1:numel(trxin),
   trxcurr = trxin(i);
+  % make row vectors
+  for j = 1:numel(fns_perframe),
+    fn = fns_perframe{j};
+    trxcurr.(fn) = trxcurr.(fn)(:)';
+  end
+
   ftdatacurr = ftdatain(i,:,:);
   isbad = false(1,trxcurr.nframes);
   for j = 1:numel(fns_check),
@@ -159,30 +172,46 @@ for i = 1:numel(trxin),
   end
   
 end
-
+  
 metadatafile = fullfile(expdir,metadatafilestr);
 metadata = ReadMetadataFile(metadatafile);
 
-for i = 1:numel(trxout),
-  trxout(i).dt = diff(trxout(i).timestamps); %#ok<AGROW>
-  % center on arena center
-  trxout(i).x_mm = trxout(i).x_mm - calib.centroids(1)/calib.PPM; %#ok<AGROW>
-  trxout(i).y_mm = trxout(i).y_mm - calib.centroids(2)/calib.PPM; %#ok<AGROW>
-  for j = 1:numel(fns_perframe),
-    fn = fns_perframe{j};
-    trxout(i).(fn) = trxout(i).(fn)(:)';
-  end
-  if strcmpi(metadata.gender,'b'),
-    median_a_mm = median(trxout(i).a_mm,'omitnan');
-    if median_a_mm >= thresh_female_a_mm,
-      trxout(i).sex = 'f'; %#ok<AGROW>
-    else
-      trxout(i).sex = 'm'; %#ok<AGROW>
+if strcmpi(metadata.gender,'b'),
+  if ~isempty(nmale),
+    median_a_mm = nan(numel(trxout),1);
+    for i = 1:numel(trxout),
+      median_a_mm(i) = median(trxout(i).a_mm,'omitnan');
+    end
+    [~,sizeorder] = sort(median_a_mm);
+    for i = 1:numel(trxout),
+      if ismember(i,sizeorder(1:nmale)),
+        trxout(i).sex = 'm'; %#ok<AGROW> 
+      else
+        trxout(i).sex = 'f'; %#ok<AGROW> 
+      end
     end
   else
-    trxout(i).sex = metadata.gender; %#ok<AGROW> 
+    [trx1] = FlyDiscoClassifySex(expdir,'trx',trxout,...
+      'settingsdir',settingsdir,...
+      'analysis_protocol','current_bubble',...
+      'dosave',false,...
+      'verbose',0);
+    for i = 1:numel(trxout),
+      nmalecurr = nnz(strcmp(trx1(i).sex,'M'));
+      if nmalecurr >= trx1(i).nframes,
+        trxout(i).sex = 'm'; %#ok<AGROW> 
+      else
+        trxout(i).sex = 'f'; %#ok<AGROW> 
+      end
+    end
   end
+else
+  for i = 1:numel(trxout),
+    trxout(i).sex = metadata.gender; %#ok<AGROW>
+  end
+
 end
+
 
 trxdataload.trx = trxout;
 save(outtrxfile,'-struct','trxdataload');
