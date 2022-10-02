@@ -33,6 +33,13 @@ if useDataCaptureInfo,
 end
 
 protocolfile = fullfile(expdir,protocolfilestr);
+if ~exist(protocolfile,'file'),
+  % no protocolfile, probably not a chrimson experiment
+  indicatorLED = [];
+  isPerStepControl = [];
+  isRGB = [];
+  return;
+end
 pd = load(protocolfile);
 % returns seconds since protocol started
 [starttimes,endtimes,intensity,pulsewidths,pulseperiods,...

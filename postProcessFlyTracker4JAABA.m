@@ -1,3 +1,53 @@
+% res = postProcessFlyTracker4JAABA(expdir,...)
+%
+% Processes trajectories and metadata in the input experiment directory:
+% 1. Removes nans that can affect downstream processing. For short
+% sequences of nans (<= maxFlyTrackerNanInterpFrames), it interpolates. For
+% longer sequences of nans, it breaks trajectories into two tracklets. 
+% 2. Classifies fly sex. If the metadata says that this is a single-sex
+% video, it uses that sex. If it is a mixed sex video, uses
+% FlyDiscoClassifySex to classify sex based on area of flies. 
+% Processed trajectories are save to <expdir>/processed_trx.mat and
+% <expdir>/processed-movie-track.mat. 
+% 3. Computes wing features used by JAABA. Outputs are saved in the
+% directory <expdir>/perframe. 
+% 4. Determines onset and offset of activation. Outputs are saved in
+% <expdir>/indicatordata.mat. 
+%
+% Inputs:
+% expdir: path to experiment directory
+%
+% Output:
+% res: struct with some of the outputs. All of the outputs are saved to
+% file as described aboved.
+%
+% Optional inputs:
+% nmale: For mixed sex experiments, if you know how many male flies are
+% there are, you can specify this. Then, this the smallest nmale flies will
+% be assigned sex 'm' and the largest 'f'. Otherwise, the clustering
+% algorithm in FlyDiscoClassifySex will be used. Default: [], meaning
+% unspecified. 
+% Advanced optional inputs (you should not need to change these). 
+% maxFlyTrackerNanInterpFrames: Maximum number of nan frames to interpolate
+% through. Default: 5. 
+% The following define the names of files within the experiment directory:
+% trxfilestr: where FlyTracker stored the JAABA-compatible trajectories.
+% Default: 'movie/movie_JAABA/trx.mat'.
+% flytrackerstr: where FlyTracker stored the trajectories.
+% Default: 'movie/movie-track.mat'. 
+% calibfilestr: where FlyTracker stored the calibration information.
+% Default: 'calibration.mat'.
+% processedtrxfilestr: Where to store the processed JAABA-compatible
+% trajectories. Default: 'processed_trx.mat'. 
+% processedflytrackerfilestr: Where to store the processed
+% FlyTracker-compatible trajectories. Default: 'processed-movie-track.mat'.
+% perframedirstr: Directory to store the wing features to. Default:
+% 'perframe'. 
+% indicatorfilestr: Where to store stimulation onset and offset times to.
+% Default: indicatordata.mat. 
+% metadatafilest: Where FlyBowlDataCapture stored experiment metadata.
+% Default: Metadata.xml
+
 function res = postProcessFlyTracker4JAABA(expdir,varargin)
 
 codedir = fileparts(mfilename('fullpath'));
@@ -56,6 +106,7 @@ anglefns = {'theta','theta_mm','ori',...
   'leg 1 ang','leg 2 ang','leg 3 ang','leg 4 ang','leg 5 ang','leg 6 ang',...
   'wing l ang','wing r ang'};
 
+%% make row vectors and remove nans
 
 trxout = [];
 T = size(ftdatain,2);
@@ -173,9 +224,12 @@ for i = 1:numel(trxin),
   
 end
   
+%% sex classification
+
 metadatafile = fullfile(expdir,metadatafilestr);
 metadata = ReadMetadataFile(metadatafile);
 
+sex_classification_info = [];
 if strcmpi(metadata.gender,'b'),
   if ~isempty(nmale),
     median_a_mm = nan(numel(trxout),1);
@@ -191,7 +245,7 @@ if strcmpi(metadata.gender,'b'),
       end
     end
   else
-    [trx1] = FlyDiscoClassifySex(expdir,'trx',trxout,...
+    [trx1,sex_classification_info] = FlyDiscoClassifySex(expdir,'trx',trxout,...
       'settingsdir',settingsdir,...
       'analysis_protocol','current_bubble',...
       'dosave',false,...
@@ -212,6 +266,7 @@ else
 
 end
 
+%% save output
 
 trxdataload.trx = trxout;
 save(outtrxfile,'-struct','trxdataload');
@@ -221,6 +276,8 @@ save(outflytrackerfile,'-struct','ftdataload');
 fprintf('Postprocessed from %s->%s and\n%s->%s\nInterpolated %d frames\n%d trajectories -> %d trajectories. %d male, %d female.\n',...
   intrxfile,outtrxfile,inflytrackerfile,outflytrackerfile,ninterpframes,numel(trxin),numel(trxout),...
   nnz([trxout.sex]=='m'),nnz([trxout.sex]=='f'));
+
+%% compute wing features
 
 arena = struct;
 arena.x = calib.centroids(1);
@@ -232,8 +289,11 @@ tdout = FlyTracker2WingTracking_helper(outflytrackerfile,outtrxfile,perframedir,
 res = struct;
 res.trxout = tdout.trx;
 res.ftdataout = ftdataout;
+res.sex_classification_info = sex_classification_info;
 res.processedtrxfile = outtrxfile;
 res.processedflytrackerfile = outflytrackerfile;
+
+%% determine stimulation onset and offsets
 
 indicatorLED = estimateActivationTiming(expdir,leftovers{:});
 save(indicatorfile,'indicatorLED');
