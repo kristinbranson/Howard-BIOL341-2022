@@ -1,14 +1,18 @@
 function hax = PlotFlyFeatureOverVideo(feat,fps,activation_startframes,activation_endframes,varargin)
 
 % hax = PlotFlyFeatureOverVideo(feat,activation,fps,...)
+% Plot the features in matrix feat 
 % Inputs:
-% feat: cell with an entry for each fly. feat{i} is the data feature for
-% fly i and is a vector of size 1 x T
-% activation: struct with information about activation periods 
+% feat: matrix with a row for each fly. feat(i,:) is the data feature for
+% fly i. nflies x T matrix.
 % fps: frame rate of the camera
+% activation_startframes: matrix with activation start periods for each
+% fly. nflies x nactivation
+% activation_endframes: matrix with activation end periods for each
+% fly. nflies x nactivation
 % Output:
 % hax: axes handles
-% optional arguments:
+% Optional arguments:
 % featlabel: string with label for y-axis (default: 'Feature (units)')
 % minfeatplot: Lower limit for y-axis (default: 0)
 % maxfeatplot: Upper limit for y-axis (default: []). If empty, will use the
