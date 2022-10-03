@@ -1,4 +1,4 @@
-% res = postProcessFlyTracker4JAABA(expdir,...)
+% res = PostProcessFlyTracker4JAABA(expdir,...)
 %
 % Processes trajectories and metadata in the input experiment directory:
 % 1. Removes nans that can affect downstream processing. For short
@@ -48,7 +48,7 @@
 % metadatafilest: Where FlyBowlDataCapture stored experiment metadata.
 % Default: Metadata.xml
 
-function res = postProcessFlyTracker4JAABA(expdir,varargin)
+function res = PostProcessFlyTracker4JAABA(expdir,varargin)
 
 codedir = fileparts(mfilename('fullpath'));
 settingsdir = fullfile(codedir,'settings');
