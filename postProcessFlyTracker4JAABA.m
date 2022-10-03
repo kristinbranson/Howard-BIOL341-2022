@@ -224,6 +224,21 @@ for i = 1:numel(trxin),
   
 end
   
+%% center on arena center
+
+arena = struct;
+arena.x = calib.centroids(1) / calib.PPM;
+arena.y = calib.centroids(2) / calib.PPM;
+arena.r = calib.r / calib.PPM;
+
+for i = 1:numel(trxout),
+  trxout(i).x_mm = trxout(i).x_mm - arena.x; %#ok<AGROW> 
+  trxout(i).y_mm = trxout(i).y_mm - arena.y; %#ok<AGROW> 
+end
+
+arena.x = 0;
+arena.y = 0;
+
 %% sex classification
 
 metadatafile = fullfile(expdir,metadatafilestr);
@@ -279,11 +294,6 @@ fprintf('Postprocessed from %s->%s and\n%s->%s\nInterpolated %d frames\n%d traje
 
 %% compute wing features
 
-arena = struct;
-arena.x = calib.centroids(1);
-arena.y = calib.centroids(2);
-arena.r = calib.r;
-
 tdout = FlyTracker2WingTracking_helper(outflytrackerfile,outtrxfile,perframedir,outtrxfile,struct('fakectrax',false),arena);
 
 res = struct;
@@ -296,7 +306,9 @@ res.processedflytrackerfile = outflytrackerfile;
 %% determine stimulation onset and offsets
 
 indicatorLED = estimateActivationTiming(expdir,leftovers{:});
-save(indicatorfile,'indicatorLED');
+if ~isempty(indicatorLED),
+  save(indicatorfile,'indicatorLED');
+end
 res.indicatorLED = indicatorLED;
 
 %% debug
