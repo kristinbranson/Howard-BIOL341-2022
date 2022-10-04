@@ -76,24 +76,27 @@ axis image off;
 %% plot trajectories
 
 trx = LoadTracking(expdirs);
-nflies = size(trx,1);
-T = numel(trx.x_mm(1,:));
+[nflies,T] = size(trx.x_mm);
 nc = 5;
 nr = ceil(nflies/nc);
+mintimestamp = min(trx.timestamp(:));
+maxtimestamp = max(trx.timestamp(:));
 
 hfig = figure(2);
 clf;
 maxr = max(max(abs(trx.x_mm(:))),max(abs(trx.y_mm(:))));
-
+hax = gobjects(nflies,1);
 for fly = 1:nflies,
-  subplot(nr,nc,fly);
+  hax(fly) = subplot(nr,nc,fly);
   plot(trx.x_mm(fly,:),trx.y_mm(fly,:),'k-');
   hold on;
   scatter(trx.x_mm(fly,:),trx.y_mm(fly,:),[],trx.timestamp(fly,:),'.');
   set(gca,'XLim',[-maxr,maxr]*1.01,'YLim',[-maxr,maxr]*1.01);
   axis('equal');
-  title(sprintf('Exp %d, fly %d, %s',trx.exp_num(fly),trx.id(fly),trx.sex(fly)));
+  title(sprintf('Exp %d, fly %d, %s',trx.metadata.exp_num(fly),trx.metadata.id(fly),trx.metadata.sex(fly)));
 end
+
+set(hax,'CLim',[mintimestamp,maxtimestamp]);
 
 %% plot speed
 
@@ -104,5 +107,5 @@ speed = sqrt((trx.x_mm(:,2:end)-trx.x_mm(:,1:end-1)).^2 + (trx.y_mm(:,2:end)-trx
 hfig = figure(3);
 clf;
 
-PlotFlyFeatureOverVideo(speed,trx.fps(1),trx.activation_startframes,trx.activation_endframes,...
-  'minfeatplot',minspeed,'maxfeatplot',maxspeed,'featlabel','Speed (mm/s)')
+PlotFlyFeatureOverVideo(speed,trx.metadata.fps(1),trx.metadata.activation_startframes,trx.metadata.activation_endframes,...
+  'minfeatplot',minspeed,'maxfeatplot',maxspeed,'featlabel','Speed (mm/s)');

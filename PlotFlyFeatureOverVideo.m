@@ -30,13 +30,25 @@ colors = jet(nflies)*.7;
 hax = gca;
 
 isactivation = nargin >= 3 && ~isempty(activation_startframes);
+if isactivation && iscell(activation_startframes),
+  activation_startframes = activation_startframes(:);
+  activation_endframes = activation_endframes(:);
+end
+
 hold(hax,'on');
 
 for fly = 1:nflies,
   plot(hax,[0,(T+1)/fps],[fly-1,fly-1],'k:');
   if isactivation,
     acti = min(fly,size(activation_startframes,1));
-    PlotActivationTimePatch(activation_startframes(acti,:),activation_endframes(acti,:),fps,[fly-1,fly],hax);
+    if iscell(activation_startframes),
+      sf = activation_startframes{acti};
+      ef = activation_endframes{acti};
+    else
+      sf = activation_startframes(acti,:);
+      ef = activation_endframes(acti,:);
+    end
+    PlotActivationTimePatch(sf,ef,fps,[fly-1,fly],hax);
   end
   plot(hax,(1:T)/fps,fly-1+(feat(fly,:)-minfeatplot)/(maxfeatplot-minfeatplot),'-','Color',colors(fly,:));
 end
