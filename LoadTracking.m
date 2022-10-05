@@ -52,10 +52,10 @@
 %
 %
 % Example ways to access data:
-% exptable = LoadTracking(expdirs)
-% x = exptable.x_mm(exptable.metadata.exp_num==1,:);
+% data = LoadTracking(expdirs)
+% x = data.x_mm(data.metadata.exp_num==1,:);
 % Returns a matrix of size ntraj x T
-% y = exptable.y_mm(17:18,101:110)
+% y = data.y_mm(17:18,101:110)
 % Returns a matrix of size 2 x 10
 
 function data = LoadTracking(expdirs,varargin)
@@ -72,39 +72,17 @@ end
 
 nexps = numel(expdirs);
 
-tablenames_perexp = {'exp_name','exp_num','pxpermm','fps'};
-tablenames_perfly = {'id','sex'};
-structnames_activation = {'startframe','endframe','intensity','pulsewidths','pulseperiods'};
-tablenames_activation = {'activation_startframes','activation_endframes','activation_intensities','activation_pulsewidths','activation_pulseperiods'};
-
-outnames_perframe =  {'x_px','y_px','theta_rad','a_px','b_px','xwingl_px','ywingl_px','xwingr_px','ywingr_px','wing_anglel_rad','wing_angler_rad','timestamp'};
-innames_perframe = {'x',   'y',   'theta',    'a',   'b',   'xwingl',   'ywingl',   'xwingr',   'ywingr'   ,'wing_anglel',    'wing_angler',    'timestamps'};
 copy_perframe = {'x_mm','y_mm','a_mm','b_mm'};
+outnames_perframe =  {'x_px','y_px','theta_rad','a_px','b_px','xwingl_px','ywingl_px','xwingr_px','ywingr_px','wing_anglel_rad','wing_angler_rad'};
+innames_perframe = {'x',   'y',   'theta',    'a',   'b',   'xwingl',   'ywingl',   'xwingr',   'ywingr'   ,'wing_anglel',    'wing_angler'};
 outnames_perframe = [copy_perframe,outnames_perframe];
 innames_perframe = [copy_perframe,innames_perframe];
 
-tablenames = [tablenames_perexp,tablenames_perfly,tablenames_activation];
-
 sexes = {'f','m'};
 
-maxT = 0;
-ntrajs = nan(nexps,1);
-for expi = 1:nexps,
-  expdir = expdirs{expi};
-  trxfile = fullfile(expdir,trxfilestr);
-  td = matfile(trxfile);
-  T = numel(td.timestamps);
-  maxT = max(maxT,T);
-  ntrajs(expi) = numel(td.trx);
-end
-ntrajstotal = sum(ntrajs);
-
-rowidx = 1;
-data = struct;
-for i = 1:numel(outnames_perframe),
-  data.(outnames_perframe{i}) = nan(ntrajstotal,maxT);
-end
-data.metadata = [];
+data.summary.exps = [];
+data.summary.flies = [];
+data.summary.activation = [];
 for expi = 1:nexps,
   expdir = expdirs{expi};
   [~,expname] = fileparts(expdir);
@@ -118,50 +96,75 @@ for expi = 1:nexps,
     isopto = isfield(ind,'indicatorLED') && ~isempty(ind.indicatorLED);
   end
 
-  for i = 1:numel(td.trx),
-    row = cell(1,numel(tablenames));
-    idx = 1;
+  expcurr = struct;
+  expinfo = struct;
+  expinfo.expname = string(expname);
+  expinfo1 = parseExpName(expname);
+  fns = fieldnames(expinfo1);
+  for j = 1:numel(fns),
+    expinfo.(fns{j}) = string(expinfo1.(fns{j}));
+  end
+  expinfo.expname = string(expname);
+  expinfo.pxpermm = td.trx(1).pxpermm;
+  expinfo.fps = td.trx(1).fps;
+  expinfo.nframes = max([td.trx.endframe]);
+  expinfo.nflies = numel(td.trx);
+  expcurr.summary = struct2table(expinfo);
+  if expi == 1,
+    data.summary.exps = repmat(expcurr.summary,[nexps,1]);
+  else
+    data.summary.exps(expi,:) = expcurr.summary;
+  end
 
-    % per-experiment
-    row{idx} = compose("%s",expname);
-    idx = idx + 1;
-    row{idx} = expi;
-    idx = idx + 1;
-    row{idx} = td.trx(1).pxpermm;
-    idx = idx + 1;
-    row{idx} = td.trx(1).fps;
-    idx = idx + 1;
-    % per-fly
-    row{idx} = i;
-    idx = idx + 1;
-    row{idx} = categorical({td.trx(i).sex},sexes);
-    idx = idx + 1;
+  for flyi = 1:numel(td.trx),
+
+    flycurr = struct;
+    flycurr.expnum = expi;
+    flycurr.flynum = flyi;
+    flycurr.sex = categorical({td.trx(flyi).sex},sexes);
+    flycurr.startframe = td.trx(flyi).firstframe;
+    flycurr.endframe = td.trx(flyi).endframe;
+    flycurr.nframes = td.trx(flyi).nframes;
+    tabcurr = struct2table(flycurr);
+    data.summary.flies = [data.summary.flies;tabcurr];
+    flycurr = rmfield(flycurr,{'expnum','flynum'});
 
     % tracking
-    t0 = td.trx(i).firstframe;
-    t1 = td.trx(i).endframe;
-    for j = 1:numel(outnames_perframe),
-      data.(outnames_perframe{j})(rowidx,t0:t1) = td.trx(i).(innames_perframe{j});
+    t0 = td.trx(flyi).firstframe;
+    t1 = td.trx(flyi).endframe;
+    for inti = 1:numel(outnames_perframe),
+      flycurr.(outnames_perframe{inti})(t0:t1) = td.trx(flyi).(innames_perframe{inti});
     end
 
-    % activation
-    for j = 1:numel(tablenames_activation),
-      if isopto,
-        row{idx} = ind.indicatorLED.(structnames_activation{j});
-      else
-        row{idx} = [];
-      end
-      idx = idx + 1;
-    end
-
-    tabcurr = cell2table(row,'VariableNames',tablenames);
-    if isempty(data.metadata),
-      data.metadata = repmat(tabcurr,[ntrajstotal,1]);
+    if flyi == 1,
+      expcurr.fly = repmat(flycurr,[numel(td.trx),1]);
     else
-      data.metadata(rowidx,:) = tabcurr;
+      expcurr.fly(flyi) = flycurr;
     end
-    rowidx = rowidx + 1;
+
   end
+
+  % activation
+  expcurr.activation = [];
+  if isopto,
+    for inti = 1:numel(ind.indicatorLED.startframe),
+      row = [expi, inti, ind.indicatorLED.startframe(inti), ind.indicatorLED.endframe(inti), ...
+        ind.indicatorLED.intensity(inti), ind.indicatorLED.pulsewidths(inti), ...
+        ind.indicatorLED.pulseperiods(inti)];
+      tab = array2table(row,'VariableNames',{'expnum','intervalnum','startframe','endframe','intensity','pulsewidth','pulseperiod'});
+      data.summary.activation = [data.summary.activation; tab];
+      tab = array2table(row(3:end),'VariableNames',{'startframe','endframe','intensity','pulsewidth','pulseperiod'});
+      expcurr.activation = [expcurr.activation; tab];
+    end
+  end
+
+  expcurr.timestamps = td.timestamps;
+  if expi == 1,
+    data.exp = repmat(expcurr,[nexps,1]);
+  else
+    data.exp(expi) = expcurr;
+  end
+
 
 end
     

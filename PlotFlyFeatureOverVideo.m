@@ -1,4 +1,4 @@
-function hax = PlotFlyFeatureOverVideo(feat,fps,activation_startframes,activation_endframes,varargin)
+function hax = PlotFlyFeatureOverVideo(data,featname,varargin)
 
 % hax = PlotFlyFeatureOverVideo(feat,activation,fps,...)
 % Plot the features in matrix feat 
@@ -18,41 +18,41 @@ function hax = PlotFlyFeatureOverVideo(feat,fps,activation_startframes,activatio
 % maxfeatplot: Upper limit for y-axis (default: []). If empty, will use the
 % max of all data. 
 
-[nflies,T] = size(feat);
+nflies = size(data.summary.flies,1);
+maxT = max(data.summary.exps.nframes./data.summary.exps.fps);
 
 [featlabel,minfeatplot,maxfeatplot] = ...
-  myparse(varargin,'featlabel','Feature (units)','minfeatplot',0,'maxfeatplot',[]);
+  myparse(varargin,'featlabel',featname,'minfeatplot',[],'maxfeatplot',[]);
 if isempty(maxfeatplot),
-  maxfeatplot = max(feat(:));
+  maxfeatplot = minfeatplot;
+  for flyi = 1:nflies,
+    expnum = data.summary.flies.expnum(flyi);
+    flynum = data.summary.flies.flynum(flyi);
+    feat = data.exp(expnum).fly(flynum).(featname);
+    maxfeatplot = max(maxfeatplot,max(feat(:)));
+  end
 end
 
 colors = jet(nflies)*.7;
 hax = gca;
 
-isactivation = nargin >= 3 && ~isempty(activation_startframes);
-if isactivation && iscell(activation_startframes),
-  activation_startframes = activation_startframes(:);
-  activation_endframes = activation_endframes(:);
-end
-
 hold(hax,'on');
 
-for fly = 1:nflies,
-  plot(hax,[0,(T+1)/fps],[fly-1,fly-1],'k:');
-  if isactivation,
-    acti = min(fly,size(activation_startframes,1));
-    if iscell(activation_startframes),
-      sf = activation_startframes{acti};
-      ef = activation_endframes{acti};
-    else
-      sf = activation_startframes(acti,:);
-      ef = activation_endframes(acti,:);
-    end
-    PlotActivationTimePatch(sf,ef,fps,[fly-1,fly],hax);
+for flyi = 1:nflies,
+  expnum = data.summary.flies.expnum(flyi);
+  flynum = data.summary.flies.flynum(flyi);
+  plot(hax,[0,maxT],[flyi-1,flyi-1],'k:');
+  fps = data.exp(expnum).summary.fps;
+  T = data.exp(expnum).summary.nframes;
+  if ~isempty(data.exp(expnum).activation),
+    sf = data.exp(expnum).activation.startframe;
+    ef = data.exp(expnum).activation.endframe;
+    PlotActivationTimePatch(sf,ef,fps,[flyi-1,flyi],hax);
   end
-  plot(hax,(1:T)/fps,fly-1+(feat(fly,:)-minfeatplot)/(maxfeatplot-minfeatplot),'-','Color',colors(fly,:));
+  feat = data.exp(expnum).fly(flynum).(featname);
+  plot(hax,(1:numel(feat))/fps,flyi-1+(feat-minfeatplot)/(maxfeatplot-minfeatplot),'-','Color',colors(flyi,:));
 end
- plot(hax,[0,(T+1)/fps],[nflies,nflies],'k:');
-xlabel(hax,'Time (s)');
+plot(hax,[0,maxT],[nflies,nflies],'k:');
+xlabel(hax,'Time (s)','Interpreter','none');
 ylabel(hax,['Fly, ',featlabel]);
-set(hax,'XLim',[0,(T+1)/fps],'YLim',[-.1,nflies+.1]);
+set(hax,'XLim',[0,maxT],'YLim',[-.1,nflies+.1]);

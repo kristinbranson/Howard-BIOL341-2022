@@ -49,7 +49,7 @@ end
 expi = 1;
 fr = 100;
 expdir = expdirs{expi};
-trx = LoadTracking(expdir);
+data = LoadTracking(expdir);
 
 [readframe,nframes,fid,headerinfo] = get_readframe_fcn(fullfile(expdir,'movie.ufmf'));
 im = readframe(fr);
@@ -61,51 +61,73 @@ hax = gca;
 imagesc(im,[0,255]);
 colormap gray;
 hold on;
-colors = jet(size(trx,1));
-hbody = gobjects(size(trx,1),1);
-hwings = gobjects(size(trx,1),1);
-for fly = 1:size(trx,1),
-  [hbody(fly),hwings(fly)] = DrawWingedFly(trx.x_px(fly,fr),trx.y_px(fly,fr),trx.theta_rad(fly,fr),...
-    trx.a_px(fly,fr),trx.b_px(fly,fr),trx.xwingl_px(fly,fr),trx.ywingl_px(fly,fr),...
-    trx.xwingr_px(fly,fr),trx.ywingr_px(fly,fr),'style','ellipse',...
-    'Color',colors(fly,:));
+ntrajs = size(data.summary.flies,1);
+colors = jet(ntrajs);
+hbody = gobjects(ntrajs,1);
+hwings = gobjects(ntrajs,1);
+for flyi = 1:ntrajs,
+  trk = data.exp.fly(flyi);
+  [hbody(flyi),hwings(flyi)] = DrawWingedFly(trk.x_px(fr),trk.y_px(fr),trk.theta_rad(fr),...
+    trk.a_px(fr),trk.b_px(fr),trk.xwingl_px(fr),trk.ywingl_px(fr),...
+    trk.xwingr_px(fr),trk.ywingr_px(fr),'style','ellipse',...
+    'Color',colors(flyi,:),'LineWidth',2);
 end
 axis image off;
 
 
 %% plot trajectories
 
-trx = LoadTracking(expdirs);
-[nflies,T] = size(trx.x_mm);
+data = LoadTracking(expdirs);
+nflies = size(data.summary.flies,1);
+T = max(data.summary.exps.nframes);
 nc = 5;
 nr = ceil(nflies/nc);
-mintimestamp = min(trx.timestamp(:));
-maxtimestamp = max(trx.timestamp(:));
+mintimestamp = inf;
+maxtimestamp = 0;
+nexps = numel(data.exp);
+for expi = 1:nexps,
+  mintimestamp = min(mintimestamp,min(data.exp(expi).timestamps));
+  maxtimestamp = max(maxtimestamp,max(data.exp(expi).timestamps));
+end
 
 hfig = figure(2);
 clf;
-maxr = max(max(abs(trx.x_mm(:))),max(abs(trx.y_mm(:))));
+maxr = 0;
 hax = gobjects(nflies,1);
-for fly = 1:nflies,
-  hax(fly) = subplot(nr,nc,fly);
-  plot(trx.x_mm(fly,:),trx.y_mm(fly,:),'k-');
+for flyi = 1:nflies,
+  expnum = data.summary.flies.expnum(flyi);
+  flynum = data.summary.flies.flynum(flyi);
+  trk = data.exp(expnum).fly(flynum);
+  hax(flyi) = subplot(nr,nc,flyi);
+  plot(trk.x_mm,trk.y_mm,'k-');
   hold on;
-  scatter(trx.x_mm(fly,:),trx.y_mm(fly,:),[],trx.timestamp(fly,:),'.');
-  set(gca,'XLim',[-maxr,maxr]*1.01,'YLim',[-maxr,maxr]*1.01);
-  axis('equal');
-  title(sprintf('Exp %d, fly %d, %s',trx.metadata.exp_num(fly),trx.metadata.id(fly),trx.metadata.sex(fly)));
+  scatter(trk.x_mm,trk.y_mm,[],data.exp(expnum).timestamps,'.');
+  title(sprintf('Exp %d, fly %d, %s',expnum,flynum,trk.sex));
+  maxr = max([maxr,max(abs(trk.x_mm)),max(abs(trk.y_mm))]);
 end
 
+axis(hax,'equal');
+set(hax,'XLim',[-maxr,maxr]*1.01,'YLim',[-maxr,maxr]*1.01);
 set(hax,'CLim',[mintimestamp,maxtimestamp]);
 
 %% plot speed
 
 minspeed = 0;
-maxspeed = 3; 
-speed = sqrt((trx.x_mm(:,2:end)-trx.x_mm(:,1:end-1)).^2 + (trx.y_mm(:,2:end)-trx.y_mm(:,1:end-1)).^2);
+maxspeed = 50; 
+
+data = LoadTracking(expdirs);
+
+nflies = size(data.summary.flies,1);
+speed = cell(nflies,1);
+for expi = 1:numel(data.exp),
+  for flyi = 1:numel(data.exp(expi).fly),
+    x = data.exp(expi).fly(flyi).x_mm;
+    y = data.exp(expi).fly(flyi).y_mm;
+    data.exp(expi).fly(flyi).speed_mmps = sqrt( (x(2:end)-x(1:end-1)).^2 + (y(2:end)-y(1:end-1)).^2 ) * data.exp(expi).summary.fps;
+  end
+end
 
 hfig = figure(3);
 clf;
 
-PlotFlyFeatureOverVideo(speed,trx.metadata.fps(1),trx.metadata.activation_startframes,trx.metadata.activation_endframes,...
-  'minfeatplot',minspeed,'maxfeatplot',maxspeed,'featlabel','Speed (mm/s)');
+PlotFlyFeatureOverVideo(data,'speed_mmps','minfeatplot',minspeed,'maxfeatplot',maxspeed,'featlabel','Speed (mm/s)');
