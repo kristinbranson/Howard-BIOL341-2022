@@ -6,57 +6,144 @@
 % expdirs: cell of full paths to experiment directories. 
 % 
 % Output: 
-% data: data is a struct. It has a field for each of the following pieces
-% of trajectory information:
-% x_mm: x-coordinate of centroid in millimeters, ntrajs x T array.
-% y_mm: y-coordinate of centroid in millimeters, ntrajs x T array.
-% a_mm: quarter-major axis length in millimeters, ntrajs x T array.
-% b_mm: quarter-minor axis length in millimeters, ntrajs x T array.
-% x_px: x-coordinate of centroid in pixels, ntrajs x T array.
-% y_px: y-coordinate of centroid in pixels, ntrajs x T array.
-% theta_rad: orientation of fly in radians, ntrajs x T array.
-% a_px: quarter-major axis length in pixels, ntrajs x T array.
-% b_px: quarter-minor axis length in pixels, ntrajs x T array.
-% xwingl_px: x-coordinate of left wing tip, ntrajs x T array.
-% ywingl_px: y-coordinate of left wing tip, ntrajs x T array.
-% xwingr_px: x-coordinate of right wing tip, ntrajs x T array.
-% ywingr_px: y-coordinate of right wing tip, ntrajs x T array.
-% wing_anglel_rad: left wing angle in radians, ntrajs x T array. 
-% wing_angler_rad: right wing angle in radians, ntrajs x T array. 
-% timestamp: when the frame was recorded (same for all flies in a video),
-% ntrajs x T array.
-% Here, ntrajs is the total number of fly trajectories in all experiment
-% directories. T is the maximum number of frames in any video. 
-% data also has a field metadata which is a table with the following
-% information: 
-% exp_name: Name of experiment (same for all flies in a video), string. 
-% exp_num: Index for the experiment (same for all flies in a video), number
-% 1, 2,... 
-% pxpermm: Pixels per millimeter conversion factor (same for all flies in
-% a video), number.
-% fps: Frames per second conversion factor (same for all flies in
-% a video), number. 
-% id: Index for the fly in the experiment, number 1, 2, ..., 10
-% sex: 'f' or 'm' indicating whether the fly is female or male. 
-% activation_startframes: onsets of activation periods (same for all flies
-% in a video), 1 x nactivation array. 
-% activation_endframes: offsets of activation periods (same for all flies
-% in a video), 1 x nactivation array.
-% activation_intensities: intensity of red light during activation periods
-% (same for all flies in a video), 1 x nactivation array.
-% activation_pulsewidths: width of pulses of light during activation
-% periods in us (same for all flies in a video), 1 x nactivation array.
-% activation_pulseperiods: period for pulsing light during activation
-% periods in us (same for all flies in a video), 1 x nactivation array. 
-% Here, nactivation is the number of activation periods for the video. 
+% data: data is a struct. 
 %
+% data.summary contains the following summary information about all the
+% videos loaded in:
+%
+% data.summary.exps is a table with a row for each video, describing all
+% the experiments represented by this struct. It contains the following:
+% data.summary.exps.expname(expi): Name of experiment, parsed from file
+% path (string).
+% data.summary.exps.exptype(expi): Type of experiment, parsed from expname.
+% data.summary.exps.condition(expi): String indicating the flies'
+% condition, parsed from experiment name (string). 
+% data.summary.exps.rig(expi): String indicating which rig the experiment
+% was recorded in (string). 
+% data.summary.exps.timestamp(expi): String indicating when the experiment
+% was recorded (string).
+% data.summary.exps.pxpermm(expi): Pixels per millimeter conversion factor
+% (number). 
+% data.summary.exps.nframes(expi): Last frame tracked for any fly in the
+% video (number). 
+% data.summary.exps.nflies(expi): Number of fly trajectories for this video
+% (number). 
+%
+% data.summary.flies is a table with a row for each fly in any video,
+% describing the flies represented by this struct. It contains the
+% following:
+% data.summary.flies.expnum(flyi): Which experiment this fly is part of
+% (number). 
+% data.summary.flies.flynum(flyi): Which fly in experiment expnum this row
+% corresponds to (number). 
+% data.summary.flies.sex(flyi):  'f' or 'm' indicating whether the fly is
+% female or male (categorical). 
+% data.summary.flies.startframe(flyi): The first frame of the video this
+% fly is tracked (number). 
+% data.summary.flies.endframe(flyi): The last frame of the video this
+% fly is tracked (number). 
+% data.summary.flies.nframes(flyi): The number of video frames this
+% fly is tracked for (number). 
+% 
+% data.summary.activation is a table with a row for each activation period
+% in any video, describing the activation periods represented by this
+% struct. It contains the following:
+% data.summary.activation.expnum(inti): Which experiment this activation
+% period is a part of (number).
+% data.summary.activation.intervalnum(inti): Which activation interval in
+% the video this corresponds to (number).
+% data.summary.activation.startframe(inti): Which frame of the video this
+% activation interval starts on (number). 
+% data.summary.activation.endframe(inti): Which frame of the video this
+% activation interval ends on (number). 
+% data.summary.activation.intensity(inti): Intensity (%) of red light during
+% activation periods (number).
+% data.summary.activation.pulsewidth(inti): Width of pulses of light during
+% activation, in microseconds (number). 
+% data.summary.activation.pulseperiod(inti): Period of pulses of light during
+% activation, in microseconds (number). 
+% 
+% data.exp is an array of structs, where data.exp(expnum) is a struct
+% containing information related to experiment expnum. 
+% data.exp(expnum).summary is a table with a single row containing
+% information about this experiment. It is the same as row expnum of
+% data.summary.exps. 
+% data.exp(expnum).summary.expname: Name of experiment, parsed from file
+% path (string).
+% data.exp(expnum).summary.exptype: Type of experiment, parsed from expname.
+% data.exp(expnum).summary.condition: String indicating the flies'
+% condition, parsed from experiment name (string). 
+% data.exp(expnum).summary.rig: String indicating which rig the experiment
+% was recorded in (string). 
+% data.exp(expnum).summarytimestamp: String indicating when the experiment
+% was recorded (string).
+% data.exp(expnum).summary.pxpermm: Pixels per millimeter conversion factor
+% (number). 
+% data.exp(expnum).summary.nframes: Last frame tracked for any fly in the
+% video (number). 
+% data.exp(expnum).summary.nflies: Number of fly trajectories for this video
+% (number). 
+%
+% data.exp(expnum).fly is an array of structs, were
+% data.exp(expnum).fly(flynum) contains trajectory data for fly flynum in
+% experiment expnum. It contains the following fields:
+%
+% data.exp(expnum).fly(flynum).sex: 'f' or 'm' indicating whether the fly is
+% female or male (categorical). 
+% data.exp(expnum).fly(flynum).startframe: The first frame of the video
+% this fly is tracked (number).
+% data.exp(expnum).fly(flynum).endframe: The last frame of the video this
+% fly is tracked (number). 
+% data.exp(expnum).fly(flynum).nframes: The number of video frames this
+% fly is tracked for (number). 
+% The following fields are arrays, with an entry for each of the T =
+% data.exp(expnum).nframes frames in the experiment.
+% x_mm: x-coordinate of centroid in millimeters, 1 x T array.
+% y_mm: y-coordinate of centroid in millimeters, 1 x T array.
+% a_mm: quarter-major axis length in millimeters, 1 x T array.
+% b_mm: quarter-minor axis length in millimeters, 1 x T array.
+% x_px: x-coordinate of centroid in pixels, 1 x T array.
+% y_px: y-coordinate of centroid in pixels, 1 x T array.
+% theta_rad: orientation of fly in radians, 1 x T array.
+% a_px: quarter-major axis length in pixels, 1 x T array.
+% b_px: quarter-minor axis length in pixels, 1 x T array.
+% xwingl_px: x-coordinate of left wing tip, 1 x T array.
+% ywingl_px: y-coordinate of left wing tip, 1 x T array.
+% xwingr_px: x-coordinate of right wing tip, 1 x T array.
+% ywingr_px: y-coordinate of right wing tip, 1 x T array.
+% wing_anglel_rad: left wing angle in radians, 1 x T array. 
+% wing_angler_rad: right wing angle in radians, 1 x T array. 
 %
 % Example ways to access data:
+%
 % data = LoadTracking(expdirs)
-% x = data.x_mm(data.metadata.exp_num==1,:);
-% Returns a matrix of size ntraj x T
-% y = data.y_mm(17:18,101:110)
-% Returns a matrix of size 2 x 10
+% 
+% Access data for a specific experiment and fly:
+% x = data.exp(expnum).fly(flynum).x_mm
+% Returns an array of size 1 x T, where T is the number of frames tracked
+% in video expnum. 
+%
+% Access data for a fly indexed across all flies in all videos:
+% flyi = 15
+% expnum = data.summary.flies.expnum(flyi);
+% flynum = data.summary.flies.flynum(flyi);
+% y = data.exp(expnum).fly(flynum).y_mm;
+% Returns an array of size 1 x T, where T is the number of frames tracked
+% in video expnum. 
+% 
+% Access frames for all flies after the onset of the second period of
+% activation:
+% actidx = find(data.summary.activation.intervalnum == 2);
+% deltat = 100;
+% theta = zeros(0,deltat);
+% for i = 1:numel(actidx),
+%   inti = actidx(i);
+%   expnum = data.summary.activation.expnum(inti);
+%   t0 = data.summary.activation.startframe(inti);
+%   for flynum = 1:numel(data.exp(expnum).fly),
+%     theta = [theta;data.exp(expnum).fly(flynum).theta_rad(t0:t0+deltat-1)];
+%   end
+% end
 
 function data = LoadTracking(expdirs,varargin)
 
@@ -133,6 +220,7 @@ for expi = 1:nexps,
     t0 = td.trx(flyi).firstframe;
     t1 = td.trx(flyi).endframe;
     for inti = 1:numel(outnames_perframe),
+      flycurr.(outnames_perframe{inti}) = nan(1,expinfo.nframes);
       flycurr.(outnames_perframe{inti})(t0:t1) = td.trx(flyi).(innames_perframe{inti});
     end
 

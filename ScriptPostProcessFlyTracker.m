@@ -117,6 +117,7 @@ maxspeed = 50;
 
 data = LoadTracking(expdirs);
 
+% compute speed for each fly, and add it to the data struct.
 nflies = size(data.summary.flies,1);
 speed = cell(nflies,1);
 for expi = 1:numel(data.exp),
