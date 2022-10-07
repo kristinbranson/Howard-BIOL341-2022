@@ -1,4 +1,4 @@
-﻿# FlyTracker tutorial
+# FlyTracker tutorial
 
 1. In MATLAB, navigate to the `FlyTracker` directory. 
 2. At the MATLAB prompt, type `tracker`. This will open the FlyTracker GUI.
