@@ -2,14 +2,15 @@ function data = ComputeMeanStdErrIntervals(data,featname,varargin)
 
 nexps = numel(data.exp);
 
-[nframespre,nframespost,tfonset,meanfeatname,stdfeatname,stderrfeatname] = ...
+[nframespre,nframespost,tfonset,meanfeatname,stdfeatname,stderrfeatname,deltatname] = ...
   myparse(varargin,...
   'nframespre',30,...
   'nframespost',150,...
   'onset',true,...
   'meanfeatname','',...
   'stdfeatname','',...
-  'stderrfeatname','');
+  'stderrfeatname','',...
+  'deltatname','');
 
 if tfonset,
   onsetname = 'onset';
@@ -25,6 +26,9 @@ if isempty(stdfeatname)
 end
 if isempty(stderrfeatname)
   stderrfeatname = sprintf('stderr_%s_%s',onsetname,featname);
+end
+if isempty(deltatname),
+  deltatname = sprintf('deltat_%s_%s',onsetname,featname);
 end
 
 intervalT = nframespre+nframespost+1;
@@ -44,6 +48,7 @@ for i = 1:nexps,
   data.exp(i).stat.(meanfeatname) = zeros(1,intervalT);
   data.exp(i).stat.(stdfeatname) = zeros(1,intervalT);
   data.exp(i).stat.(stderrfeatname) = zeros(1,intervalT);
+  data.exp(i).stat.(deltatname) = [-nframespre,nframespost];
 
   count = zeros(1,intervalT);
   for j = 1:numel(tscurr),
