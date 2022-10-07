@@ -1,7 +1,7 @@
 %% set up path
 
-addpath /groups/branson/home/bransonk/behavioranalysis/code/FlyDiscoAnalysis;
-modpath;
+%addpath /groups/branson/home/bransonk/behavioranalysis/code/FlyDiscoAnalysis;
+%modpath;
 addpath /groups/branson/home/bransonk/behavioranalysis/code/FlyDiscoAnalysis/JAABA/misc;
 addpath /groups/branson/home/bransonk/behavioranalysis/code/FlyDiscoAnalysis/JAABA/filehandling;
 
@@ -253,107 +253,35 @@ end
 
 for i = 1:numel(expdirs),
   expdir = expdirs{i};
-  postProcessFlyTracker4JAABA(expdir);
+  PostProcessFlyTracker4JAABA(expdir);
 end
 
 %% load in all data
 
-maxT = inf;
-fps = 150;
-
-% nframesperexp = nan(size(expdirs));
-% for i = 1:numel(expdirs),
-%   expdir = expdirs{i};
-%   headerinfo = ufmf_read_header(fullfile(expdir,'movie.ufmf'));
-%   nframesperexp(i) = headerinfo.nframes;
-% end
-
-d = 5;
-data = cell(1,numel(expdirs));
-sex = cell(1,numel(expdirs));
-names = {'x','y','ori','wing_anglel','wing_angler'};
-activation = struct;
-activation.startframes = cell(1,numel(expdirs));
-activation.endframes = cell(1,numel(expdirs));
-activation.intensities = cell(1,numel(expdirs));
-activation.pulsewidths = cell(1,numel(expdirs));
-activation.pulseperiods = cell(1,numel(expdirs));
-
-for i = 1:numel(expdirs),
-  expdir = expdirs{i};
-  pptd = load(fullfile(expdir,'processed_trx.mat'));
-  ntraj = numel(pptd.trx);
-
-  T0 = max([pptd.trx.endframe]);
-  nflies = zeros(T0,1);
-  for j = 1:numel(pptd.trx),
-    t0 = pptd.trx(j).firstframe;
-    t1 = pptd.trx(j).endframe;
-    nflies(t0:t1) = nflies(t0:t1)+1;
-  end
-  mednflies = median(nflies);
-  T = find(nflies>=mednflies,1,'last');
-  T = min(maxT,T);
-  fprintf('%d: T0 = %d, T = %d\n',i,T0,T);
-
-  datacurr = nan([T,d,ntraj]);
-  sexcurr = repmat('?',[1,ntraj]);
-  load(fullfile(expdir,'indicatordata.mat'),'indicatorLED');
-  startidx = indicatorLED.startframe <= T;
-  endidx = indicatorLED.endframe <= T;
-  assert(nnz(startidx)==nnz(endidx));
-  idx = startidx;
-  activation.startframes{i} = indicatorLED.startframe(idx);
-  activation.endframes{i} = indicatorLED.endframe(idx);
-  activation.intensities{i} = indicatorLED.intensity(idx);
-  activation.pulsewidths{i} = indicatorLED.pulsewidths(idx);
-  activation.pulseperiods{i} = indicatorLED.pulseperiods(idx);
-
-  for j = 1:numel(pptd.trx),
-    x = nan(T,1);
-    y = nan(T,1);
-    theta = nan(T,1);
-    wing_anglel = nan(T,1);
-    wing_angler = nan(T,1);
-    t0 = pptd.trx(j).firstframe;
-    t1 = min(pptd.trx(j).endframe,T);
-    i1 = t1-t0+1;
-    x(t0:t1) = pptd.trx(j).x_mm(1:i1);
-    y(t0:t1) = pptd.trx(j).y_mm(1:i1);
-    theta(t0:t1) = pptd.trx(j).theta_mm(1:i1);
-    wing_anglel(t0:t1) = pptd.trx(j).wing_anglel(1:i1);
-    wing_angler(t0:t1) = pptd.trx(j).wing_anglel(1:i1);
-    datacurr(:,:,j) = [x,y,theta,wing_anglel,wing_angler];
-    sexcurr(j) = pptd.trx(j).sex;
-  end
-  data{i} = datacurr;
-  sex{i} = sexcurr;
-end
-expnames = cell(1,numel(expdirs));
-for i = 1:numel(expnames),
-  [~,expnames{i}] = fileparts(expdirs{i});
-end
-%save('SampleData20220912.mat','data','names','sex','expnames','activation','fps');
+data = LoadTracking(expdirs,'underscorein','exptype');
 
 %% select intervals 
 
 pulsefrac = 1;
 actintensity = 'max';
+fps = 150;
 startofftime = 0*fps;
+minnflies = 5;
 
-datastartframes = nan(1,numel(expdirs));
-dataendframes = nan(1,numel(expdirs));
+datacrop = data;
 for i = 1:numel(expdirs),
 
-  non = numel(activation.intensities{i});
+  act = data.exp(i).activation;
+
+  non = size(act,1);
   idxon = true(1,non);
   if ~isempty(pulsefrac),
-    idxon = (activation.pulsewidths{i} ./ activation.pulseperiods{i}) == pulsefrac;
+    idxon = (act.pulsewidth ./ act.pulseperiod) == pulsefrac;
   end
   switch actintensity,
     case 'max',
-      [maxint] = max(activation.intensities{i}(idxon));
-      idxon = idxon & activation.intensities{i} == maxint;
+      [maxint] = max(act.intensity(idxon));
+      idxon = idxon & act.intensity == maxint;
     case 'all'
       % do nothing
   end
@@ -362,25 +290,35 @@ for i = 1:numel(expdirs),
   if idxon(1) == 1,
     t0 = 1;
   else
-    t0 = activation.endframes{i}(idxon(1)-1)+1+startofftime;
+    t0 = act.endframe(idxon(1)-1)+1+startofftime;
   end
   if idxon(end) == non,
-    t1 = size(data{i},1);
-  else 
-    t1 = activation.startframes{i}(idxon(end)+1)-1;
-  end
+    t1 = data.exp(i).summary.nframes;
 
-  datastartframes(i) = t0;
-  dataendframes(i) = t1;
-  data{i} = data{i}(t0:t1,:,:);
-  activation.intensities{i} = activation.intensities{i}(idxon);
-  activation.pulsewidths{i} = activation.pulsewidths{i}(idxon);
-  activation.pulseperiods{i} = activation.pulseperiods{i}(idxon);
-  activation.startframes{i} = activation.startframes{i}(idxon)-t0+1;
-  activation.endframes{i} = activation.endframes{i}(idxon)-t0+1;
+    % some of the videos have some bad frames at the end
+    nfliescurr = zeros(1,t1);
+    for j = 1:numel(data.exp(i).fly),
+      t0curr = data.exp(i).fly(j).startframe;
+      t1curr = data.exp(i).fly(j).endframe;
+      nfliescurr(t0curr:t1curr) = nfliescurr(t0curr:t1curr) + 1;
+    end
+    newt1 = find(nfliescurr>=minnflies,1,'last');
+    if newt1 < t1,
+      fprintf('Shortening exp %d to %d < %d frames because of bad frames at the end\n',i,newt1,t1);
+      t1 = newt1;
+    end
+
+  else 
+    t1 = act.startframe(idxon(end)+1)-1;
+  end
+  fprintf('Cropping experiment %d to frames %d to %d (nframes: %d -> %d), %d intervals of activation\n',...
+    i,t0,t1,data.exp(i).summary.nframes,t1-t0+1,numel(idxon));
+  
+  datacrop = CropTracking(datacrop,i,t0,t1);
 
 end
 
 %% save to file
 
-save('SampleData20220915.mat','data','names','sex','expnames','activation','fps','datastartframes','dataendframes');
+data = datacrop;
+save('SampleData20221006.mat','data');

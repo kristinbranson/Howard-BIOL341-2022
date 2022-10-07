@@ -1,4 +1,4 @@
-function hax = PlotFeatureOverVideo(feat,meanfeat,activation,fps,varargin)
+function hax = PlotFeatureOverVideo(data,featname,varargin)
 
 % hax = PlotFeatureOverVideo(feat,meanfeat,activation,fps,...)
 % Inputs:
@@ -25,58 +25,69 @@ function hax = PlotFeatureOverVideo(feat,meanfeat,activation,fps,varargin)
 % size 1 x nvideos. (default: 1:nvideos)
 % expnames: names of experiments. (default: {'','',...}).
 
-nvideos = numel(feat);
+nexps = numel(data.exp);
 [featlabel,minfeatplot,maxfeatplot,plotallflies,plotstderr,...
-  stderrfeat,genotypeidx,expnames] = ...
-  myparse(varargin,'featlabel','Feature (units)','minfeatplot',0,'maxfeatplot',[],...
+  meanfeatname,stderrfeatname] = ...
+  myparse(varargin,'featlabel','Feature (units)','minfeatplot',[],'maxfeatplot',[],...
   'plotallflies',false,'plotstderr',true,...
-  'stderrfeat',{},...
-  'genotypeidx',1:nvideos,...
-  'expnames',repmat({''},[1,nvideos]));
+  'meanfeatname',['mean_',featname],...
+  'stdferreatname',['stderr_',featname]);
 
 clf;
 naxc = 2;
-naxr = ceil(nvideos/naxc);
+naxr = ceil(nexps/naxc);
 if isempty(maxfeatplot),
-  maxfeatplot = max(cellfun(@(x) max(x(~isinf(x))),feat));
+  maxfeatplot = FeaturePrctiles(data,featname,100);
 end
+if isempty(minfeatplot),
+  minfeatplot = FeaturePrctiles(data,featname,0);
+end
+
 ylim = [minfeatplot,maxfeatplot];
 
-genotypecolors = lines(max(genotypeidx));
+[exptypes,~,exptypeidx] = unique(data.summary.exps.type);
+exptypecolors = lines(numel(exptypes));
 
 % one set of axes per video
 hax = gobjects(naxc,naxr);
-for i = 1:nvideos,
+for i = 1:nexps,
 
-  T = size(feat{i},1);  
+  T = numel(data.exp(i).fly(1).(featname));
+  fps = data.exp(i).summary.fps;
 
   % create the axes
   hax(i) = subplot(naxr,naxc,i);
   hold(hax(i),'on');
 
   % plot when the lights are on
-  PlotActivationTimePatch(activation.startframes{i},activation.endframes{i},fps,ylim,hax(i));
+  PlotActivationTimePatch(data.exp(i).activation.startframe,data.exp(i).activation.endframe,fps,ylim,hax(i));
 
   % plot the speed for all the flies. this will create a different line for
   % each fly
+  
   if plotallflies,
-    plot(hax(i),(1:T)/fps,feat{i}','-');
+    flycolors = jet(numel(data.exp(i).fly))*.7;
+    for j = 1:numel(data.exp(i).fly),
+      plot(hax(i),(1:T)/fps,data.exp(i).fly(j).feat','-','Color',flycolors(j,:));
+    end
     statcolor = 'k';
   else
-    statcolor = genotypecolors(genotypeidx(i),:);
+    statcolor = exptypecolors(exptypeidx(i),:);
   end
+
+  meancurr = data.exp(i).stat.(meanfeatname);
 
   % plot standard error (standard deviation of mean)
   if plotstderr,
-    stderrcurr = stderrfeat{i};
-    plot(hax(i),(1:T)/fps,meanfeat{i}-stderrcurr,'-','Color',statcolor);
-    plot(hax(i),(1:T)/fps,meanfeat{i}+stderrcurr,'-','Color',statcolor);
+    stderrcurr = data.exp(i).stat.(stderrfeatname);
+    plot(hax(i),(1:T)/fps,meancurr-stderrcurr,'-','Color',statcolor);
+    plot(hax(i),(1:T)/fps,meancurr+stderrcurr,'-','Color',statcolor);
   end
 
   % plot the mean speed over all flies
-  plot(hax(i),(1:T)/fps,meanfeat{i}','-','Linewidth',2,'Color',statcolor);
+  plot(hax(i),(1:T)/fps,meancurr,'-','Linewidth',2,'Color',statcolor);
 
-  title(hax(i),sprintf('Video %d %s',i,expnames{i}),'Interpreter','none');
+  title(hax(i),sprintf('Video %d %s',i,data.exp(i).summary.type),'Interpreter','none');
   box(hax(i),'off');
   set(hax(i),'YLim',ylim,'XLim',[0,(T+1)/fps])
 end

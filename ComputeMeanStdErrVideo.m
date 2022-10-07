@@ -1,16 +1,44 @@
-function [meanfeat,stderrfeat] = ComputeMeanStdErrVideo(feat)
+function data = ComputeMeanStdErrVideo(data,featname,meanfeatname,stdfeatname,stderrfeatname)
 
-nvideos = numel(feat);
-
-% average over flies
-meanfeat = cell(1,nvideos);
-for i = 1:nvideos,
-  meanfeat{i} = mean(feat{i},2,'omitnan');
+if nargin < 3,
+  meanfeatname = ['mean_',featname];
+end
+if nargin < 4,
+  stdfeatname = ['std_',featname];
+end
+if nargin < 5,
+  stderrfeatname = ['stderr_',featname];
 end
 
-% compute the standard deviation over all flies
-stderrfeat = cell(1,nvideos);
-for i = 1:nvideos,
-  ntrajcurr = sum(~isnan(feat{i}),2);
-  stderrfeat{i} = std(feat{i},0,2,'omitnan')./sqrt(ntrajcurr);
+nexps = numel(data.exp);
+
+for expnum = 1:nexps,
+  T = numel(data.exp(expnum).fly(1).(featname));
+
+  % average over flies
+  meanfeat = zeros(1,T);
+  ncurr = zeros(1,T);
+  for flynum = 1:numel(data.exp(expnum).fly),
+    idx = ~isnan(data.exp(expnum).fly(flynum).(featname));
+    meanfeat(idx) = meanfeat(idx) + data.exp(expnum).fly(flynum).(featname)(idx);
+    ncurr(idx) = ncurr(idx) + 1;
+  end
+  meanfeat = meanfeat ./ ncurr;
+  meanfeat(ncurr==0) = nan;
+  data.exp(expnum).stat.(meanfeatname) = meanfeat;
+
+  % standard deviation over flies
+  stdfeat = zeros(1,T);
+  for flynum = 1:numel(data.exp(expnum).fly),
+    idx = ~isnan(data.exp(expnum).fly(flynum).(featname));
+    stdfeat(idx) = stdfeat(idx) + (data.exp(expnum).fly(flynum).(featname)(idx)-meanfeat(idx)).^2;
+  end
+  stdfeat = sqrt(stdfeat ./ ncurr);
+  stdfeat(ncurr==0) = nan;
+  data.exp(expnum).stat.(stdfeatname) = stdfeat;
+
+  % standard error over flies
+  data.exp(expnum).stat.(stderrfeatname) = stdfeat./sqrt(ncurr);
+  data.exp(expnum).stat.(stderrfeatname)(ncurr==0) = nan;
+  
 end

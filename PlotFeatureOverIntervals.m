@@ -1,4 +1,4 @@
-function PlotFeatureOverIntervals(feat,meanfeat,activation,fps,varargin)
+function PlotFeatureOverIntervals(data,featname,varargin)
 
 % hax = PlotFeatureOverIntervals(feat,meanfeat,activation,fps,...)
 % Inputs:
@@ -30,52 +30,63 @@ function PlotFeatureOverIntervals(feat,meanfeat,activation,fps,varargin)
 % plotonset: whether to plot the onset of activation (true) or the offset
 % (false) (default: true). 
 
-nvideos = numel(feat);
+nexps = numel(data.exp);
+fps = median(data.summary.exps.fps);
 
 [featlabel,minfeatplot,maxfeatplot,plotallflies,plotstderr,...
-  stderrfeat,genotypeidx,nframespre_plot,nframespost_plot,...
-  nstimuliplot,plotonset,expnames] = ...
+  meanfeatname,stderrfeatname,nframespre_plot,nframespost_plot,...
+  nstimuliplot,plotonset] = ...
   myparse(varargin,'featlabel','Feature (units)','minfeatplot',0,'maxfeatplot',[],...
   'plotallflies',false,'plotstderr',true,...
-  'stderrfeat',{},...
-  'genotypeidx',1:nvideos,...
+  'meanfeatname',['mean_',featname],...
+  'stderrfeatname',['stderr_',featname],...
   'nframespre_plot',1*fps,...
   'nframespost_plot',5*fps,...
   'nstimuliplot',inf,...
-  'plotonset',true,...
-  'expnames',repmat({''},[1,nvideos]));
+  'plotonset',true);
+
+if isempty(maxfeatplot),
+  maxfeatplot = FeaturePrctiles(data,featname,100);
+end
+if isempty(minfeatplot),
+  minfeatplot = FeaturePrctiles(data,featname,0);
+end
 
 ylim = [minfeatplot,maxfeatplot];
 
+expnums = data.summary.activation.expnum;
 if plotonset,
-  allts = activation.startframes;
+  allts = data.summary.activation.startframe;
 else
   allts = activation.endframes;
 end
-nstimuli = nan(1,nvideos);
-for i = 1:nvideos,
-  nstimuli(i) = numel(allts{i});
+nstimuli = nan(1,nexps);
+for i = 1:nexps,
+  nstimuli(i) = nnz(expnums==i);
 end
 nstimuliplot = min(nstimuliplot,max(nstimuli));
 middlecol = ceil(nstimuliplot/2);
 
-genotypecolors = lines(max(genotypeidx));
+[exptypes,~,exptypeidx] = unique(data.summary.exps.type);
+exptypecolors = lines(numel(exptypes));
 
-hax = gobjects(nvideos,nstimuliplot);
+hax = gobjects(nexps,nstimuliplot);
 
-for i = 1:nvideos,
-  T = size(feat{i},1);
+for i = 1:nexps,
+  T = numel(data.exp(i).fly(1).(featname));
+  fps = data.exp(i).summary.fps;
+  tscurr = allts(expnums==i);
   for j = 1:nstimuliplot,
     if j > nstimuli(i),
       continue;
     end
 
     % which axes to plot in
-    axi = sub2ind([nstimuliplot,nvideos],j,i);
-    hax(i,j) = subplot(nvideos,nstimuliplot,axi);
+    axi = sub2ind([nstimuliplot,nexps],j,i);
+    hax(i,j) = subplot(nexps,nstimuliplot,axi);
 
     % which frames to plot
-    t = allts{i}(j);
+    t = tscurr(j);
 
     t0 = max(1,t-nframespre_plot);
     t1 = min(T,t+nframespost_plot);
@@ -83,15 +94,21 @@ for i = 1:nvideos,
     hold(hax(i,j),'on');
     % plot each fly
     if plotallflies,
-      plot(hax(i,j),(t0-t:t1-t)/fps,feat{i}(t0:t1,:)','-');
+      flycolors = jet(numel(data.exp(i).fly))*.7;
+      for k = 1:numel(data.exp(i).fly),
+        plot(hax(i,j),(t0-t:t1-t)/fps,data.exp(i).fly(k).(featname)(t0:t1),'-','Color',flycolors(k,:));
+      end
       statcolor = 'k';
     else
-      statcolor = genotypecolors(genotypeidx(i),:);
+      statcolor = exptypecolors(exptypeidx(i),:);
     end
+
+    meancurr = data.exp(i).stat.(meanfeatname)(t0:t1);
+
     if plotstderr,
-      stderrcurr = stderrfeat{i}(t0:t1);
-      plot(hax(i,j),(t0-t:t1-t)/fps,meanfeat{i}(t0:t1)-stderrcurr,'-','Color',statcolor);
-      plot(hax(i,j),(t0-t:t1-t)/fps,meanfeat{i}(t0:t1)+stderrcurr,'-','Color',statcolor);
+      stderrcurr = data.exp(i).stat.(stderrfeatname)(t0:t1);
+      plot(hax(i,j),(t0-t:t1-t)/fps,meancurr-stderrcurr,'-','Color',statcolor);
+      plot(hax(i,j),(t0-t:t1-t)/fps,meancurr+stderrcurr,'-','Color',statcolor);
     end
 
     % plot a vertical line when the lights turn on
@@ -102,7 +119,7 @@ for i = 1:nvideos,
     else
       lw = 1;
     end
-    plot(hax(i,j),(t0-t:t1-t)/fps,meanfeat{i}(t0:t1)','-','LineWidth',lw,'color',statcolor);
+    plot(hax(i,j),(t0-t:t1-t)/fps,meancurr','-','LineWidth',lw,'color',statcolor);
 
     % only show which stimulus this is in the top row of axes
     if i == 1,
@@ -110,7 +127,7 @@ for i = 1:nvideos,
     end
 
     if j == middlecol,
-      xlabel(hax(i,j),expnames{i},'Interpreter','none');
+      xlabel(hax(i,j),data.exp(i).summary.type,'Interpreter','none');
     end
     box(hax(i,j),'off');
   end
@@ -120,6 +137,6 @@ end
 
 % force axes to share the same x and y limits
 linkaxes(hax(ishandle(hax)));
-ylabel(hax(end,1),{featlabel,sprintf('Video %d',nvideos)});
+ylabel(hax(end,1),{featlabel,sprintf('Video %d',nexps)});
 xlabel(hax(end,1),'Time (s)');
 set(hax(ishandle(hax)),'YLim',ylim,'XLim',[-nframespre_plot,nframespost_plot]/fps);

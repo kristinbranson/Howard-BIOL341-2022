@@ -148,10 +148,12 @@
 function data = LoadTracking(expdirs,varargin)
 
 [trxfilestr,...
-  indicatorfilestr] = ...
+  indicatorfilestr,...
+  underscorein] = ...
   myparse(varargin,...
   'trxfilestr','processed_trx.mat',...
-  'indicatorfilestr','indicatordata.mat');
+  'indicatorfilestr','indicatordata.mat',...
+  'underscorein','exptype');
 
 if ischar(expdirs),
   expdirs = {expdirs};
@@ -186,7 +188,7 @@ for expi = 1:nexps,
   expcurr = struct;
   expinfo = struct;
   expinfo.expname = string(expname);
-  expinfo1 = parseExpName(expname);
+  expinfo1 = parseExpName(expname,underscorein);
   fns = fieldnames(expinfo1);
   for j = 1:numel(fns),
     expinfo.(fns{j}) = string(expinfo1.(fns{j}));
@@ -194,7 +196,9 @@ for expi = 1:nexps,
   expinfo.expname = string(expname);
   expinfo.pxpermm = td.trx(1).pxpermm;
   expinfo.fps = td.trx(1).fps;
-  expinfo.nframes = max([td.trx.endframe]);
+  expinfo.startframe = 1;
+  expinfo.endframe = max([td.trx.endframe]);
+  expinfo.nframes = expinfo.endframe;
   expinfo.nflies = numel(td.trx);
   expcurr.summary = struct2table(expinfo);
   if expi == 1,

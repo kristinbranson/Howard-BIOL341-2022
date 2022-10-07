@@ -1,45 +1,81 @@
-function [meanfeatinterval,stderrfeatinterval] = ComputeMeanStdErrIntervals(feat,activation,varargin)
+function data = ComputeMeanStdErrIntervals(data,featname,varargin)
 
-nvideos = numel(feat);
+nexps = numel(data.exp);
 
-[nframespre,nframespost,tfonset] = ...
+[nframespre,nframespost,tfonset,meanfeatname,stdfeatname,stderrfeatname] = ...
   myparse(varargin,...
   'nframespre',30,...
   'nframespost',150,...
-  'onset',true);
-
-intervalT = nframespre+nframespost+1;
-meanfeatinterval = zeros(intervalT,nvideos);
-stderrfeatinterval = zeros(intervalT,nvideos);
+  'onset',true,...
+  'meanfeatname','',...
+  'stdfeatname','',...
+  'stderrfeatname','');
 
 if tfonset,
-  allts = activation.startframes;
+  onsetname = 'onset';
+else
+  onsetname = 'offset';
+end
+
+if isempty(meanfeatname)
+  meanfeatname = sprintf('mean_%s_%s',onsetname,featname);
+end
+if isempty(stdfeatname)
+  stdfeatname = sprintf('std_%s_%s',onsetname,featname);
+end
+if isempty(stderrfeatname)
+  stderrfeatname = sprintf('stderr_%s_%s',onsetname,featname);
+end
+
+intervalT = nframespre+nframespost+1;
+
+expnums = data.summary.activation.expnum;
+if tfonset,
+  allts = data.summary.activation.startframe;
 else
   allts = activation.endframes;
 end
 
-for i = 1:nvideos,
+for i = 1:nexps,
 
-  T = size(feat{i},1);
-  count = zeros(intervalT,1);
-  for j = 1:numel(allts{i}),
-    t = allts{i}(j);
+  T = numel(data.exp(i).fly(1).(featname));
+  tscurr = allts(expnums==i);
+
+  data.exp(i).stat.(meanfeatname) = zeros(1,intervalT);
+  data.exp(i).stat.(stdfeatname) = zeros(1,intervalT);
+  data.exp(i).stat.(stderrfeatname) = zeros(1,intervalT);
+
+  count = zeros(1,intervalT);
+  for j = 1:numel(tscurr),
+    t = tscurr(j);
+    t0 = max(1,t-nframespre);
+    t1 = min(T,t+nframespost);
+    i0 = t0-(t-nframespre) + 1;
+    i1 = i0 + (t1-t0);
+    for k = 1:numel(data.exp(i).fly),
+      feat = data.exp(i).fly(k).(featname)(t0:t1);
+      idx = isnan(feat);
+      feat(idx) = 0;
+      data.exp(i).stat.(meanfeatname)(i0:i1) = data.exp(i).stat.(meanfeatname)(i0:i1) + feat;
+      count(i0:i1) = count(i0:i1) + double(~idx);
+    end
+  end
+  data.exp(i).stat.(meanfeatname) = data.exp(i).stat.(meanfeatname) ./ count;
+
+  for j = 1:numel(tscurr),
+    t = tscurr(j);
     t0 = max(1,t-nframespre);
     t1 = min(T,t+nframespost);
     i0 = t0-(t-nframespre) + 1;
     i1 = i0 + (t1-t0); 
-    meanfeatinterval(i0:i1,i) = meanfeatinterval(i0:i1,i) + sum(feat{i}(t0:t1,:),2,'omitnan');
-    count(i0:i1) = count(i0:i1) + sum(~isnan(feat{i}(t0:t1,:)),2);
+    feat = data.exp(i).fly(k).(featname)(t0:t1);
+    dfeat = (feat-data.exp(i).stat.(meanfeatname)(i0:i1)).^2;
+    idx = isnan(dfeat);
+    dfeat(idx) = 0;
+    data.exp(i).stat.(stdfeatname)(i0:i1) = data.exp(i).stat.(stdfeatname)(i0:i1) + dfeat;
   end
-  meanfeatinterval(:,i) = meanfeatinterval(:,i) ./ count;
-
-  for j = 1:numel(allts{i}),
-    t = allts{i}(j);
-    t0 = max(1,t-nframespre);
-    t1 = min(T,t+nframespost);
-    i0 = t0-(t-nframespre) + 1;
-    i1 = i0 + (t1-t0); 
-    stderrfeatinterval(i0:i1,i) = stderrfeatinterval(i0:i1,i) + sum((feat{i}(t0:t1,:)-meanfeatinterval(i0:i1,i)).^2,2,'omitnan');
-  end
-  stderrfeatinterval(:,i) = sqrt(stderrfeatinterval(:,i) ./ count) ./ max(1,sqrt(count));
+  data.exp(i).stat.(stdfeatname) = sqrt(data.exp(i).stat.(stdfeatname) ./ count);
+  data.exp(i).stat.(stdfeatname)(count==0) = nan;
+  data.exp(i).stat.(stderrfeatname) = data.exp(i).stat.(stdfeatname) ./ sqrt(count);
+  data.exp(i).stat.(stderrfeatname)(count==0) = nan;
 end

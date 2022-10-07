@@ -18,8 +18,8 @@ if isempty(offsetRGB),
 end
 if isempty(offsetRed),
   if useDataCaptureInfo,
-    %offsetRed = -0.023194;
-    offsetRed = -.123194;
+    offsetRed = -0.023194;
+    %offsetRed = -.123194;
   else
     offsetRed = 0.342450;
   end
