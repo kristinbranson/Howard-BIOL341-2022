@@ -244,7 +244,9 @@ hfig = figure(7);
 clf;
 hax = PlotMeanFeatureOverIntervals(data,'speed_mmps',...
   'maxfeatplot',maxspeed_plot,...
-  'minfeatplot',minspeed_plot);
+  'minfeatplot',minspeed_plot,...
+  'featlabel','Speed (mm/s)');
+
 
 %set(hax,'yscale','log');
 
@@ -254,7 +256,9 @@ hfig = figure(8);
 clf;
 hax = PlotMeanFeatureOverIntervals(data,'dist2fly_mm',...
   'maxfeatplot',maxdist2fly_plot,...
-  'minfeatplot',mindist2fly_plot);
+  'minfeatplot',mindist2fly_plot,...
+  'featlabel','Inter-fly dist. (mm)');
+
 
 %% histogram speed during on and off periods
 

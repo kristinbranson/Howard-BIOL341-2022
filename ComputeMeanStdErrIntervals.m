@@ -73,11 +73,12 @@ for i = 1:nexps,
     t1 = min(T,t+nframespost);
     i0 = t0-(t-nframespre) + 1;
     i1 = i0 + (t1-t0); 
-    feat = data.exp(i).fly(k).(featname)(t0:t1);
-    dfeat = (feat-data.exp(i).stat.(meanfeatname)(i0:i1)).^2;
-    idx = isnan(dfeat);
-    dfeat(idx) = 0;
-    data.exp(i).stat.(stdfeatname)(i0:i1) = data.exp(i).stat.(stdfeatname)(i0:i1) + dfeat;
+    for k = 1:numel(data.exp(i).fly),
+      feat = data.exp(i).fly(k).(featname)(t0:t1);
+      dfeat = (feat-data.exp(i).stat.(meanfeatname)(i0:i1)).^2;
+      dfeat(isnan(dfeat)) = 0;
+      data.exp(i).stat.(stdfeatname)(i0:i1) = data.exp(i).stat.(stdfeatname)(i0:i1) + dfeat;
+    end
   end
   data.exp(i).stat.(stdfeatname) = sqrt(data.exp(i).stat.(stdfeatname) ./ count);
   data.exp(i).stat.(stdfeatname)(count==0) = nan;
