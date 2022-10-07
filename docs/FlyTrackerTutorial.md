@@ -2,7 +2,7 @@
 
 1. In MATLAB, navigate to the `FlyTracker` directory. 
 2. At the MATLAB prompt, type `tracker`. This will open the FlyTracker GUI.
-3. Click **VIDEO folder** to select the _experiment directory_ containing your video (`movie.ufmf`).[Screenshot of the FlyTracker dialog](ScreenShotSelectVideo.png)
+3. Click **VIDEO folder** to select the _experiment directory_ containing your video (`movie.ufmf`).![Screenshot of the FlyTracker dialog](ScreenShotSelectVideo.png)
 4. Click **CALIBRATE** to set parameters.
 5. In the _Calibrator_ drag the line to match the diameter of the arena. Set the **length of ruler (mm)** to be **53.371**, the diameter of the arena. This is how we tell FlyTracker how to convert from pixels to millimeters. ![Screenshot of setting the pixel to millimeter conversion ratio.](ScreenShotPx2mm.png)
 6. Click **continue**. FlyTracker will estimate what the arena would look like if no flies were in it (Background model). ![Background model computed by FlyTracker.](ScreenShotBackgroundModel.png)
