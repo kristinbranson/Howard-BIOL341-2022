@@ -1,34 +1,39 @@
 %% Script to post-process the output from FlyTracker and to visualize it. 
 
-%% set up paths
+%% set up paths for code
 
-% add JAABA to the path
-addpath ../JAABA/misc;
-addpath ../JAABA/filehandling;
+% add JAABA to the path (.. is the parent directory to the current one)
+current_directory = pwd;
+parent_directory = fileparts(currentdir);
+addpath(fullfile(parentDirectory, 'JAABA', 'misc'));
+addpath(fullfile(parentDirectory, 'JAABA', 'filehandling'));
 
 % add path to BIOL 341 code if not in this directory already
 % uncomment this!
-
 %addpath BIOL341;
 
-rootdatadir = '/groups/branson/bransonlab/alice/temp_howard';
+%% set up paths for the expriment you want to look at
 
-% set data locations
+% where the data directories are (change)
+% rootdatadir = '/groups/branson/bransonlab/alice/temp_howard';
+rootdatadir = 'E:\BIOL341\GoogleDrive';
+% Names of single experiments by directory name:
 expnames = {
-  'HU_Back_Ctrl_RigF_20220927T172138',
-  'HU_Back_Ctrl_RigE_20220927T172346',
-  'CsChrSocial3_aIPg_RigF_20220923T163615'
+  'CsChr_JRC_SS56987_RigA_20210902T070106',
   };
 
+% combine them to make a full path
 expdirs = cell(size(expnames));
-for i = 1:numel(expnames),
+for i = 1:numel(expnames)
   expdirs{i} = fullfile(rootdatadir,expnames{i});
 end
-
+disp(expdirs)
 %% look at a video
 
+% pick a movie (1 - number of expnames)
 expi = 1;
 expdir = expdirs{expi};
+disp(sprintf('working on exp %s', expdir))
 
 % open playfmf with a specific video
 playfmf('moviefile',fullfile(expdir,'movie.ufmf'));
@@ -38,7 +43,7 @@ playfmf('moviefile',fullfile(expdir,'movie.ufmf'));
 
 %% post-process the tracking for further analysis
 
-for expi = 1:numel(expdirs),
+for expi = 1:numel(expdirs)
   expdir = expdirs{expi};
   fprintf('%d: %s\n',expi,expdir);
   res = PostProcessFlyTracker4JAABA(expdir);
