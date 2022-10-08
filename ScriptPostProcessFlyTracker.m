@@ -118,57 +118,86 @@ axis image off;
 %% plot trajectories
 
 data = LoadTracking(expdirs);
-nflies = size(data.summary.flies,1);
 T = max(data.summary.exps.nframes); % max number of frames in the movie
-nc = 5;
-nr = ceil(nflies/nc);
+nc = 5; % number of columns to plot in supbplot
+nr = ceil(nflies/nc); % number of rows
+
+% for all expriments get the minimal and maximal timestamp so we could plot
+% them all together without clipping
 mintimestamp = inf;
 maxtimestamp = 0;
 nexps = numel(data.exp);
-for expi = 1:nexps,
-  mintimestamp = min(mintimestamp,min(data.exp(expi).timestamps));
-  maxtimestamp = max(maxtimestamp,max(data.exp(expi).timestamps));
+for expi = 1:nexps
+    currnet_exp = data.exp(expi);
+    mintimestamp = min(mintimestamp,min(currnet_exp.timestamps));
+    maxtimestamp = max(maxtimestamp,max(currnet_exp.timestamps));
 end
+fprintf('Global time starts from %.2f seconds to %.2f seconds \n', mintimestamp, maxtimestamp)
 
-hfig = figure(2);
+% plot 
+figure(2);
 clf;
-maxr = 0;
-hax = gobjects(nflies,1);
-for flyi = 1:nflies,
-  expnum = data.summary.flies.expnum(flyi);
-  flynum = data.summary.flies.flynum(flyi);
-  trk = data.exp(expnum).fly(flynum);
-  hax(flyi) = subplot(nr,nc,flyi);
-  plot(trk.x_mm,trk.y_mm,'k-');
-  hold on;
-  scatter(trk.x_mm,trk.y_mm,[],data.exp(expnum).timestamps,'.');
-  title(sprintf('Exp %d, fly %d, %s',expnum,flynum,trk.sex));
-  maxr = max([maxr,max(abs(trk.x_mm)),max(abs(trk.y_mm))]);
+nflies = size(data.summary.flies,1);
+% prepare an array of graphics objects to put the plots in
+hax = gobjects(nflies,1); 
+% loop over flies (combined from all experiments)
+for flyi = 1:nflies
+    % get 1 track x and y in millimiters
+    expnum = data.summary.flies.expnum(flyi);
+    flynum = data.summary.flies.flynum(flyi);
+    trk = data.exp(expnum).fly(flynum);
+    % plot the track as black line
+    x = trk.x_mm;
+    y = trk.y_mm;
+    hax(flyi) = subplot(nr,nc,flyi);
+    plot(x, y,'k-');
+    % add the time of each frame as colors
+    timestamps = data.exp(expnum).timestamps;
+    hold on;
+    scatter(x, y,[],timestamps,'.');
+    title(sprintf('Exp %d, fly %d, %s',expnum,flynum,trk.sex));
+    % compute the maximum radius over flies to make all plots the same size later
+    maxr = max([maxr,max(abs(trk.x_mm)),max(abs(trk.y_mm))]);
 end
-
+% post subploting cleanup (see what happens if we don't run this code)
 axis(hax,'equal');
 set(hax,'XLim',[-maxr,maxr]*1.01,'YLim',[-maxr,maxr]*1.01);
 set(hax,'CLim',[mintimestamp,maxtimestamp]);
 
-%% plot speed
-
-minspeed = 0;
-maxspeed = 50; 
+%% compute and plot speed (a new feature)
 
 data = LoadTracking(expdirs);
-
-% compute speed for each fly, and add it to the data struct.
-nflies = size(data.summary.flies,1);
-speed = cell(nflies,1);
-for expi = 1:numel(data.exp),
-  for flyi = 1:numel(data.exp(expi).fly),
-    x = data.exp(expi).fly(flyi).x_mm;
-    y = data.exp(expi).fly(flyi).y_mm;
-    data.exp(expi).fly(flyi).speed_mmps = sqrt( (x(2:end)-x(1:end-1)).^2 + (y(2:end)-y(1:end-1)).^2 ) * data.exp(expi).summary.fps;
-  end
+% loop over each expriment
+for expi = 1:numel(data.exp)
+    current_exp = data.exp(expi);
+    number_of_flies = numel(current_exp.fly);
+    % loop over each fly
+    for flyi = 1:number_of_flies
+        current_fly = current_exp.fly(flyi);
+        % position
+        x = current_fly.x_mm;
+        y = current_fly.y_mm;
+        % the change in position across one frame
+        dx = x(2:end)-x(1:end-1);
+        dy = y(2:end)-y(1:end-1);
+        % the speed in pixels
+        speed_mm_per_frame = sqrt(dx.^2 + dy.^2);
+        % correct for the duration of the frame to get 
+        fps = current_exp.summary.fps;
+        speed_mm_per_second = speed_mm_per_frame * fps;
+        % copy the data back to the struct
+        data.exp(expi).fly(flyi).speed_mm_per_second = speed_mm_per_second;
+    end
 end
 
-hfig = figure(3);
+% ploting
+figure(3);
 clf;
-
-PlotFlyFeatureOverVideo(data,'speed_mmps','minfeatplot',minspeed,'maxfeatplot',maxspeed,'featlabel','Speed (mm/s)');
+% this is a range we know is good for ploting
+minspeed = 0;
+maxspeed = 50; 
+% use the computed feature with PlotFlyFeatureOverVideo function
+% again use F1 to understand the inputs of this function
+PlotFlyFeatureOverVideo(data,'speed_mm_per_second', ...
+    'minfeatplot',minspeed,'maxfeatplot',maxspeed,...
+    'featlabel','Speed (mm/s)');
