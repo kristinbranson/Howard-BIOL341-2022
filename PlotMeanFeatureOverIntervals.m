@@ -1,43 +1,64 @@
-function hax = PlotMeanFeatureOverIntervals(meanfeat,stderrfeat,fps,nframespre,nframespost,varargin)
+function hax = PlotMeanFeatureOverIntervals(data,featname,varargin)
 
-nvideos = size(meanfeat,2);
+nexps = numel(data.exp);
 
 [featlabel,minfeatplot,maxfeatplot,plotstderr,...
-  genotypeidx,expnames] = ...
+  tfonset,meanfeatname,stderrfeatname,deltatname] = ...
   myparse(varargin,'featlabel','Feature (units)','minfeatplot',0,'maxfeatplot',[],...
   'plotstderr',true,...
-  'genotypeidx',1:nvideos,...
-  'expnames',{});
+  'onset',true,...
+  'meanfeatname','',...
+  'stderrfeatname','',...
+  'deltatname','');
 
-if isempty(expnames),
-  expnames = cell(1,nvideos);
-  for i = 1:nvideos,
-    expnames{i} = sprintf('Video %d',i);
-  end
+
+if tfonset,
+  onsetname = 'onset';
+else
+  onsetname = 'offset';
 end
 
-genotypecolors = lines(max(genotypeidx));
+if isempty(meanfeatname)
+  meanfeatname = sprintf('mean_%s_%s',onsetname,featname);
+end
+if isempty(stderrfeatname)
+  stderrfeatname = sprintf('stderr_%s_%s',onsetname,featname);
+end
+if isempty(deltatname),
+  deltatname = sprintf('deltat_%s_%s',onsetname,featname);
+end
+
+[exptypes,~,exptypeidx] = unique(data.summary.exps.type);
+
+exptypecolors = lines(numel(exptypes));
 ylim = [minfeatplot,maxfeatplot];
+deltat = data.exp(1).stat.(deltatname);
 
 naxc = 2;
-naxr = ceil(nvideos/naxc);
+naxr = ceil(nexps/naxc);
 
 hax = gobjects(naxc,naxr);
-for i = 1:nvideos,
+for i = 1:nexps,
 
-  videocolor = genotypecolors(genotypeidx(i),:);
+  fps = data.exp(i).summary.fps;
+  expcolor = exptypecolors(exptypeidx(i),:);
   hax(i) = subplot(naxr,naxc,i);
   plot([0,0],ylim,'k-');
   hold on;
 
+  meancurr = data.exp(i).stat.(meanfeatname);
+ 
   if plotstderr,
-    plot((-nframespre:nframespost)/fps,meanfeat(:,i)-stderrfeat(:,i),'-','Color',videocolor);
-    plot((-nframespre:nframespost)/fps,meanfeat(:,i)+stderrfeat(:,i),'-','Color',videocolor);
+    stderrcurr = data.exp(i).stat.(stderrfeatname);
+
+    plot((deltat(1):deltat(2))/fps,meancurr-stderrcurr,'-','Color',expcolor);
+    plot((deltat(1):deltat(2))/fps,meancurr+stderrcurr,'-','Color',expcolor);
   end
-  plot((-nframespre:nframespost)/fps,meanfeat(:,i),'-','Color',videocolor,'LineWidth',2);
-  title(expnames{i},'Interpreter','none');
+  plot((deltat(1):deltat(2))/fps,meancurr,'-','Color',expcolor,'LineWidth',2);
+  title(sprintf('%d: %s',i,data.exp(i).summary.type),'Interpreter','none');
 end
 ylabel(hax(1,naxr),featlabel);
 xlabel(hax(1,naxr),'Time (s)');
-set(hax,'YLim',ylim,'XLim',[-nframespre,nframespost]/fps);
+fps = median(data.summary.exps.fps);
+set(hax,'YLim',ylim,'XLim',deltat/fps);
 linkaxes(hax);

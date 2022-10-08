@@ -58,7 +58,7 @@ expnums = data.summary.activation.expnum;
 if plotonset,
   allts = data.summary.activation.startframe;
 else
-  allts = activation.endframes;
+  allts = data.summary.activation.endframe;
 end
 nstimuli = nan(1,nexps);
 for i = 1:nexps,

@@ -77,9 +77,9 @@ flynum = 8; % which fly to plot
 hfig = figure(1);
 clf;
 T = data.exp(expnum).summary.nframes;
-plot(data.exp(expi).fly(flynum).x_mm,data.exp(expi).fly(flynum).y_mm,'k-');
+plot(data.exp(expnum).fly(flynum).x_mm,data.exp(expnum).fly(flynum).y_mm,'k-');
 hold on;
-scatter(data.exp(expnum).fly(flynum).x_mm,data.exp(expi).fly(flynum).y_mm,[],data.exp(expnum).timestamps,'.');
+scatter(data.exp(expnum).fly(flynum).x_mm,data.exp(expnum).fly(flynum).y_mm,[],data.exp(expnum).timestamps,'.');
 axis equal;
 axis(ARENARADIUS_MM*[-1,1,-1,1]);
 hcb = colorbar;
@@ -242,14 +242,11 @@ data = ...
 
 hfig = figure(7);
 clf;
-hax = PlotMeanFeatureOverIntervals(meanspeed_interval,...
-  stderrspeed_interval,fps,...
-  nframespre_speed,nframespost_speed,...
-  'featlabel','Speed (mm/s)',...
-  'genotypeidx',exptypeidx,...
+hax = PlotMeanFeatureOverIntervals(data,'speed_mmps',...
   'maxfeatplot',maxspeed_plot,...
   'minfeatplot',minspeed_plot,...
-  'expnames',expnames);
+  'featlabel','Speed (mm/s)');
+
 
 %set(hax,'yscale','log');
 
@@ -257,370 +254,67 @@ hax = PlotMeanFeatureOverIntervals(meanspeed_interval,...
 
 hfig = figure(8);
 clf;
-hax = PlotMeanFeatureOverIntervals(meandist2fly_interval,...
-  stderrdist2fly_interval,fps,...
-  nframespre_dist2fly,nframespost_dist2fly,...
-  'featlabel','Inter-fly dist. (mm)',...
-  'genotypeidx',exptypeidx,...
+hax = PlotMeanFeatureOverIntervals(data,'dist2fly_mm',...
   'maxfeatplot',maxdist2fly_plot,...
   'minfeatplot',mindist2fly_plot,...
-  'expnames',expnames);
+  'featlabel','Inter-fly dist. (mm)');
+
 
 %% histogram speed during on and off periods
 
-t0_on = 0*fps; % how long after lights on to include
-t1_on = 10*fps; % maximum time after lights on to include. set to inf to include to the end of the period. 
-t0_off = 20*fps; % how long after lights off to include
+t0_on = round(.25*fps); % how long after lights on to include
+t1_on = inf; % maximum time after lights on to include. set to inf to include to the end of the period. 
+t0_off = round(.25*fps); % how long after lights off to include
 t1_off = inf; % maximum time after lights off to include. set to inf to include to the end of the period. 
-minfracframeshist = .5; % ignore trajectories that have too few non-nan frames
 
-maxspeedplot = 100; % histogram bin limits -- values outside will be placed in the end bin
-nbins = 20; % number of bins
+nbins = 25;
+binlimits_speed = [0,maxspeed_plot];
 
-% histogram bin locations
-binedges = logspace(-1,log10(maxspeedplot),nbins+1);
-bincenters = (binedges(1:end-1)+binedges(2:end))/2;
-% plot the fraction > maxspeedplot in a last bin
-bw = binedges(2)/binedges(1);
-bincenters(end+1) = bincenters(end)*bw;
-binedges(end+1) = inf;
-binedges(1) = 0;
+data = HistogramFeatureIntervals(data,'speed_mmps',...
+  'nframespre',t0_on,...
+  'nframespost',t1_on,...
+  'on',true,...
+  'nbins',nbins,...
+  'binlimits',binlimits_speed);
 
-meanspeedhiston = cell(nexps,1);
-meanspeedhistoff = cell(nexps,1);
-stdspeedhiston = cell(nexps,1);
-stdspeedhistoff = cell(nexps,1);
-stderrspeedhiston = cell(nexps,1);
-stderrspeedhistoff = cell(nexps,1);
-countson = cell(nexps,1);
-countsoff = cell(nexps,1);
-onintervaltypes = cell(nexps,1);
-onintervaltypeidx = cell(nexps,1);
-
-for i = 1:nexps,
-
-  % when do on and off periods start
-  onstarts = activation.startframes{i};
-  onends = activation.endframes{i};
-  offstarts = [1,activation.endframes{i}+1];
-  offends = [activation.startframes{i}-1,T];
-
-  % group together data from stimuli that are the same
-  [onintervaltypes{i},~,onintervaltypeidx{i}] = unique([activation.intensities{i}(:),activation.pulsewidths{i}(:),activation.pulseperiods{i}(:)],'rows');
-  non = size(onintervaltypes{i},1);
-  % all off stimuli are the same
-  noff = 1;
-
-  speedhistcurr = zeros(numel(bincenters),numel(onstarts),nflies(i));
-  isdatacurr = false(numel(onstarts),nflies(i));
-  T = size(speed{i},1);
-
-  % histogram each on interval for each fly
-  for j = 1:numel(onstarts),
-    % which frames to histogram
-    t = onstarts(j);
-    t0 = min(T,max(1,t+t0_on));
-    t1 = min(T,max(1,t+t1_on));
-
-    for k = 1:nflies(i),
-
-      datacurr = speed{i}(t0:t1,k);  
-      datacurr = datacurr(~isnan(datacurr));
-      isdatacurr(j,k) = numel(datacurr) > (t1-t0)*minfracframeshist;
-      speedhistcurr(:,j,k) = histcounts(datacurr,binedges,'Normalization','probability');
-
-    end
-  end
-
-  meanspeedhiston{i} = zeros(numel(bincenters),non);
-  stdspeedhiston{i} = zeros(numel(bincenters),non);
-  stderrspeedhiston{i} = zeros(numel(bincenters),non);
-
-  % compute mean, std, stderr
-  for typei = 1:non,
-    idxcurr = onintervaltypeidx{i} == typei;
-    ncurr = nnz(idxcurr)*nflies(i);
-    speedhistcurr1 = reshape(speedhistcurr(:,idxcurr,:),[numel(bincenters),ncurr]);
-    isdatacurr1 = reshape(isdatacurr(idxcurr,:),[1,ncurr]);
-    speedhistcurr1 = speedhistcurr1(:,isdatacurr1);
-    meanspeedhiston{i}(:,typei) = mean(speedhistcurr1,2);
-    stdspeedhiston{i}(:,typei) = std(speedhistcurr1,0,2);
-    stderrspeedhiston{i}(:,typei) = stdspeedhiston{i}(:,typei) / sqrt(size(speedhistcurr1,2));
-  end
-
-  % histogram each off interval for each fly
-  speedhistcurr = zeros(numel(bincenters),numel(offstarts),nflies(i));
-
-  for j = 1:numel(offstarts),
-    % which frames to histogram
-    t = offstarts(j);
-    t0 = min(T,max(1,t+t0_off));
-    t1 = min(T,max(1,t+t1_off));
-
-    for k = 1:nflies(i),
-
-      datacurr = speed{i}(t0:t1,k);  
-      datacurr = datacurr(~isnan(datacurr));
-      isdatacurr(j,k) = numel(datacurr) > (t1-t0)*minfracframeshist;
-      speedhistcurr(:,j,k) = histcounts(datacurr,binedges,'Normalization','probability');
-
-    end
-  end
-
-  % compute mean, std, stderr
-  ncurr = numel(offstarts)*nflies(i);
-  speedhistcurr1 = reshape(speedhistcurr,[numel(bincenters),ncurr]);
-  isdatacurr1 = reshape(isdatacurr,[1,ncurr]);
-  speedhistcurr1 = speedhistcurr1(:,isdatacurr1);
-  meanspeedhistoff{i} = mean(speedhistcurr1,2);
-  stdspeedhistoff{i} = std(speedhistcurr1,0,2);
-  stderrspeedhistoff{i} = stdspeedhistoff{i} / sqrt(size(speedhistcurr1,2));
-
-end
-
-%% histogram dist2fly during on and off periods
-
-t0_on = 0*fps; % how long after lights on to include
-t1_on = 30*fps; % maximum time after lights on to include. set to inf to include to the end of the period. 
-t0_off = 20*fps; % how long after lights off to include
-t1_off = inf; % maximum time after lights off to include. set to inf to include to the end of the period. 
-minfracframeshist = .5; % ignore trajectories that have too few non-nan frames
-
-mindistplot = 2;
-maxdistplot = 2*ARENARADIUS_MM; % histogram bin limits -- values outside will be placed in the end bin
-nbins = 20; % number of bins
-
-% histogram bin locations
-binedges = logspace(log10(mindistplot),log10(maxdistplot),nbins+1);
-bincenters = (binedges(1:end-1)+binedges(2:end))/2;
-% plot the fraction > maxdistplot in a last bin
-bw = binedges(2)/binedges(1);
-bincenters(end+1) = bincenters(end)*bw;
-binedges(end+1) = inf;
-binedges(1) = 0;
-
-meandist2flyhiston = cell(nexps,1);
-meandist2flyhistoff = cell(nexps,1);
-stddist2flyhiston = cell(nexps,1);
-stddist2flyhistoff = cell(nexps,1);
-stderrdist2flyhiston = cell(nexps,1);
-stderrdist2flyhistoff = cell(nexps,1);
-countson = cell(nexps,1);
-countsoff = cell(nexps,1);
-onintervaltypes = cell(nexps,1);
-onintervaltypeidx = cell(nexps,1);
-
-for i = 1:nexps,
-
-  % when do on and off periods start
-  onstarts = activation.startframes{i};
-  onends = activation.endframes{i};
-  offstarts = [1,activation.endframes{i}+1];
-  offends = [activation.startframes{i}-1,T];
-
-  % group together data from stimuli that are the same
-  [onintervaltypes{i},~,onintervaltypeidx{i}] = unique([activation.intensities{i}(:),activation.pulsewidths{i}(:),activation.pulseperiods{i}(:)],'rows');
-  non = size(onintervaltypes{i},1);
-  % all off stimuli are the same
-  noff = 1;
-
-  dist2flyhistcurr = zeros(numel(bincenters),numel(onstarts),nflies(i));
-  isdatacurr = false(numel(onstarts),nflies(i));
-
-  % histogram each on interval for each fly
-  for j = 1:numel(onstarts),
-    % which frames to histogram
-    t = onstarts(j);
-    t0 = min(T-1,max(1,t+t0_on));
-    t1 = min(T-1,max(1,t+t1_on));
-
-    for k = 1:nflies(i),
-
-      datacurr = dist2fly{i}(t0:t1,k);  
-      datacurr = datacurr(~isnan(datacurr));
-      isdatacurr(j,k) = numel(datacurr) > (t1-t0)*minfracframeshist;
-      dist2flyhistcurr(:,j,k) = histcounts(datacurr,binedges,'Normalization','probability');
-
-    end
-  end
-
-  meandist2flyhiston{i} = zeros(numel(bincenters),non);
-  stddist2flyhiston{i} = zeros(numel(bincenters),non);
-  stderrdist2flyhiston{i} = zeros(numel(bincenters),non);
-
-  % compute mean, std, stderr
-  for typei = 1:non,
-    idxcurr = onintervaltypeidx{i} == typei;
-    ncurr = nnz(idxcurr)*nflies(i);
-    dist2flyhistcurr1 = reshape(dist2flyhistcurr(:,idxcurr,:),[numel(bincenters),ncurr]);
-    isdatacurr1 = reshape(isdatacurr(idxcurr,:),[1,ncurr]);
-    dist2flyhistcurr1 = dist2flyhistcurr1(:,isdatacurr1);
-    meandist2flyhiston{i}(:,typei) = mean(dist2flyhistcurr1,2);
-    stddist2flyhiston{i}(:,typei) = std(dist2flyhistcurr1,0,2);
-    stderrdist2flyhiston{i}(:,typei) = stddist2flyhiston{i}(:,typei) / sqrt(size(dist2flyhistcurr1,2));
-  end
-
-  % histogram each off interval for each fly
-  dist2flyhistcurr = zeros(numel(bincenters),numel(offstarts),nflies(i));
-
-  for j = 1:numel(offstarts),
-    % which frames to histogram
-    t = offstarts(j);
-    t0 = min(T-1,max(1,t+t0_off));
-    t1 = min(T-1,max(1,t+t1_off));
-
-    for k = 1:nflies(i),
-
-      datacurr = dist2fly{i}(t0:t1,k);  
-      datacurr = datacurr(~isnan(datacurr));
-      isdatacurr(j,k) = numel(datacurr) > (t1-t0)*minfracframeshist;
-      dist2flyhistcurr(:,j,k) = histcounts(datacurr,binedges,'Normalization','probability');
-
-    end
-  end
-
-  % compute mean, std, stderr
-  ncurr = numel(offstarts)*nflies(i);
-  dist2flyhistcurr1 = reshape(dist2flyhistcurr,[numel(bincenters),ncurr]);
-  isdatacurr1 = reshape(isdatacurr,[1,ncurr]);
-  dist2flyhistcurr1 = dist2flyhistcurr1(:,isdatacurr1);
-  meandist2flyhistoff{i} = mean(dist2flyhistcurr1,2);
-  stddist2flyhistoff{i} = std(dist2flyhistcurr1,0,2);
-  stderrdist2flyhistoff{i} = stddist2flyhistoff{i} / sqrt(size(dist2flyhistcurr1,2));
-
-end
-
-%% plot speed histograms
+data = HistogramFeatureIntervals(data,'speed_mmps',...
+  'nframespre',t0_off,...
+  'nframespost',t1_off,...
+  'on',false,...
+  'nbins',nbins,...
+  'binlimits',binlimits_speed);
 
 hfig = figure(9);
 clf;
-
-% create set of axes for each video
-naxc = 2;
-naxr = ceil(nexps/naxc);
-hax = gobjects(naxr,naxc);
-
-% whether to plot all the on intervals, or just the brightest
-plotallonintervals = false;
-
-for i = 1:nexps,
-
-  % choose the brightest on interval to plot
-  if plotallonintervals,
-    idxonplot = 1:size(meanspeedhiston{i},2);
-  else
-    [~,idxonplot] = max(onintervaltypes{i}(:,1));
-  end
-  idxoffplot = 1;
-
-  non = numel(idxonplot);
-  noff = numel(idxoffplot);
-  if plotallonintervals,
-    colorson = lines(non);
-  else
-    colorson = [0.6350    0.0780    0.1840];
-  end
-  colorsoff = zeros(noff,3);
-
-  hax(i) = subplot(naxr,naxc,i);
-  hold(hax(i),'on');
-
-  h = gobjects(non+noff,1);
-  legs = cell(non+noff,1);
-  for j = 1:non,
-    plot(bincenters,meanspeedhiston{i}(:,idxonplot(j))-stderrspeedhiston{i}(:,idxonplot(j)),'-','Color',colorson(j,:));
-    plot(bincenters,meanspeedhiston{i}(:,idxonplot(j))+stderrspeedhiston{i}(:,idxonplot(j)),'-','Color',colorson(j,:));
-    h(j) = plot(bincenters,meanspeedhiston{i}(:,idxonplot(j)),'-','Color',colorson(j,:),'LineWidth',2);
-    if plotallonintervals,
-      legs{j} = sprintf('On %d, %d/%d',onintervaltypes{i}(idxonplot(j),:));
-    else
-      legs{j} = 'On';
-    end
-  end
-  for j = 1:noff,
-    plot(bincenters,meanspeedhistoff{i}(:,idxoffplot(j))-stderrspeedhistoff{i}(:,idxoffplot(j)),'-','Color',colorsoff(j,:));
-    plot(bincenters,meanspeedhistoff{i}(:,idxoffplot(j))+stderrspeedhistoff{i}(:,idxoffplot(j)),'-','Color',colorsoff(j,:));
-
-    h(j+non) = plot(bincenters,meanspeedhistoff{i}(:,idxoffplot(j)),'-','Color',colorsoff(j,:),'LineWidth',2);
-    legs{j+non} = 'Off';
-  end
-  if plotallonintervals,
-    legend(h,legs,'Location','EastOutside');
-  elseif i == 1,
-    legend(h,legs);
-  end
-  title(sprintf('Video %d: %s',i,expnames{i}),'Interpreter','none');
-
-end
-xlabel(hax(end),'Speed (mm/s)');
-ylabel(hax(end),'Fraction of frames');
-set(hax,'XLim',bincenters([1,end]),'xscale','log');
-linkaxes(hax);
+hax = PlotHistogramOnVsOff(data,'speed_mmps',...
+  'featlabel','Speed (mm/s)');
 
 
-%% plot dist2fly histograms
+%% histogram dist2fly during on and off periods
+
+t0_on = round(.25*fps); % how long after lights on to include
+t1_on = inf; % maximum time after lights on to include. set to inf to include to the end of the period. 
+t0_off = round(.25*fps); % how long after lights off to include
+t1_off = inf; % maximum time after lights off to include. set to inf to include to the end of the period. 
+
+nbins = 25;
+binlimits_speed = [0,maxspeed_plot];
+
+data = HistogramFeatureIntervals(data,'dist2fly_mm',...
+  'nframespre',t0_on,...
+  'nframespost',t1_on,...
+  'on',true,...
+  'nbins',nbins,...
+  'binlimits',binlimits_speed);
+
+data = HistogramFeatureIntervals(data,'dist2fly_mm',...
+  'nframespre',t0_off,...
+  'nframespost',t1_off,...
+  'on',false,...
+  'nbins',nbins,...
+  'binlimits',binlimits_speed);
 
 hfig = figure(10);
 clf;
-
-% create set of axes for each video
-naxc = 2;
-naxr = ceil(nexps/naxc);
-hax = gobjects(naxr,naxc);
-
-% whether to plot all the on intervals, or just the brightest
-plotallonintervals = false;
-
-for i = 1:nexps,
-
-  % choose the brightest on interval to plot
-  if plotallonintervals,
-    idxonplot = 1:size(meandist2flyhiston{i},2);
-  else
-    [~,idxonplot] = max(onintervaltypes{i}(:,1));
-  end
-  idxoffplot = 1;
-
-  non = numel(idxonplot);
-  noff = numel(idxoffplot);
-  if plotallonintervals,
-    colorson = lines(non);
-  else
-    colorson = [0.6350    0.0780    0.1840];
-  end
-  colorsoff = zeros(noff,3);
-
-  hax(i) = subplot(naxr,naxc,i);
-  hold(hax(i),'on');
-
-  h = gobjects(non+noff,1);
-  legs = cell(non+noff,1);
-  for j = 1:non,
-    plot(bincenters,meandist2flyhiston{i}(:,idxonplot(j))-stderrdist2flyhiston{i}(:,idxonplot(j)),'-','Color',colorson(j,:));
-    plot(bincenters,meandist2flyhiston{i}(:,idxonplot(j))+stderrdist2flyhiston{i}(:,idxonplot(j)),'-','Color',colorson(j,:));
-    h(j) = plot(bincenters,meandist2flyhiston{i}(:,idxonplot(j)),'-','Color',colorson(j,:),'LineWidth',2);
-    if plotallonintervals,
-      legs{j} = sprintf('On %d, %d/%d',onintervaltypes{i}(idxonplot(j),:));
-    else
-      legs{j} = 'On';
-    end
-  end
-  for j = 1:noff,
-    plot(bincenters,meandist2flyhistoff{i}(:,idxoffplot(j))-stderrdist2flyhistoff{i}(:,idxoffplot(j)),'-','Color',colorsoff(j,:));
-    plot(bincenters,meandist2flyhistoff{i}(:,idxoffplot(j))+stderrdist2flyhistoff{i}(:,idxoffplot(j)),'-','Color',colorsoff(j,:));
-
-    h(j+non) = plot(bincenters,meandist2flyhistoff{i}(:,idxoffplot(j)),'-','Color',colorsoff(j,:),'LineWidth',2);
-    legs{j+non} = 'Off';
-  end
-  if plotallonintervals,
-    legend(h,legs,'Location','EastOutside');
-  elseif i == 1,
-    legend(h,legs);
-  end
-  title(sprintf('Video %d: %s',i,expnames{i}),'Interpreter','none');
-
-end
-xlabel(hax(end),'Inter-fly distance (mm)');
-ylabel(hax(end),'Fraction of frames');
-set(hax,'XLim',bincenters([1,end]),'xscale','log');
-linkaxes(hax);
+hax = PlotHistogramOnVsOff(data,'dist2fly_mm',...
+  'featlabel','Inter-fly dist. (mm)');
