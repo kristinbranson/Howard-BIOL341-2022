@@ -26,6 +26,9 @@ expnames = {
 expdirs = cell(size(expnames));
 for i = 1:numel(expnames)
   expdirs{i} = fullfile(rootdatadir,expnames{i});
+  if ~exist(expdirs{i},'dir'),
+    error('Directory %s does not exist',expdirs{i});
+  end
 end
 fprintf('Here is the first full exp dir:\n%s\n', expdirs{i})
 %% look at a video
