@@ -19,7 +19,7 @@ addpath(fullfile(parent_directory, 'JAABA', 'filehandling'));
 rootdatadir = 'E:\BIOL341\GoogleDrive';
 % Names of single experiments by directory name:
 expnames = {
-  'CsChr_JRC_SS56987_RigA_20210902T070106',
+  'HU_Back_Ctrl_RigE_20220927T120006',
   };
 
 % combine them to make a full path
@@ -119,6 +119,7 @@ axis image off;
 
 data = LoadTracking(expdirs);
 T = max(data.summary.exps.nframes); % max number of frames in the movie
+nflies = size(data.summary.flies,1); % total number of flies in all movies
 nc = 5; % number of columns to plot in supbplot
 nr = ceil(nflies/nc); % number of rows
 
@@ -137,9 +138,9 @@ fprintf('Global time starts from %.2f seconds to %.2f seconds \n', mintimestamp,
 % plot 
 figure(2);
 clf;
-nflies = size(data.summary.flies,1);
 % prepare an array of graphics objects to put the plots in
 hax = gobjects(nflies,1); 
+maxr = 0;
 % loop over flies (combined from all experiments)
 for flyi = 1:nflies
     % get 1 track x and y in millimiters

@@ -72,7 +72,7 @@ nframespost_dist2fly = 30*fps;
 % change these parameters to change which video, which fly, and which
 % frames we are plotting
 expnum = 1; % which video to plot
-flynum = 8; % which fly to plot
+flynum = 7; % which fly to plot
 
 hfig = figure(1);
 clf;
@@ -93,14 +93,14 @@ title(sprintf('Video %d (%s), fly %d (%s)',expnum,data.exp(expnum).summary.type,
 % change these parameters to change which video amd which fly we are plotting
 
 expnum = 1; % which video to plot
-flynum = 8; % which fly to plot
+flynum = 7; % which fly to plot
 prct = 1; % for computing ylims
 
 hfig = figure(2);
 clf;
 % one set of axes for each trajectory feature
 feats = {'x_mm','y_mm','theta_rad','a_mm','b_mm','wing_anglel_rad','wing_angler_rad'};
-names = {'x-coord (mm)','y-coord (mm)','orientation (rad)','1/4-major axis length (mm)','1/4-minor axis length (mm)','left wing angle (rad)','right wing angle (rad)'};
+names = {'x-coord (mm)','y-coord (mm)','orientation (rad)','1/4-major axis (mm)','1/4-minor axis (mm)','left wing angle (rad)','right wing angle (rad)'};
 nfeat = numel(feats);
 hax = gobjects(nfeat,1);
 % loop over trajectory features
