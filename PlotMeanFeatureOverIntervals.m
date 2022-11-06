@@ -60,5 +60,5 @@ end
 ylabel(hax(1,naxr),featlabel);
 xlabel(hax(1,naxr),'Time (s)');
 fps = median(data.summary.exps.fps);
-set(hax,'YLim',ylim,'XLim',deltat/fps);
-linkaxes(hax);
+set(hax(1:nexps),'YLim',ylim,'XLim',deltat/fps);
+linkaxes(hax(1:nexps));

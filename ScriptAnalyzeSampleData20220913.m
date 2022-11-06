@@ -1,11 +1,49 @@
-%% load in data
+%% Script to compare behavior of flies
 
-load SampleData20221006.mat;
+usesampledata = false;
+
+%% set up paths for the expriment you want to look at and load it in
+
+if usesampledata,
+
+  sampledatafile = 'C:\Code\Howard-BIOL341-2022\SampleData20221006.mat';
+  load(sampledatafile);
+
+else
+
+  % where the data directories are (change)
+  % rootdatadir = '/groups/branson/bransonlab/alice/temp_howard';
+  % rootdatadir = 'E:\BIOL341\GoogleDrive';
+  rootdatadir = 'C:\Code\Howard-BIOL341-2022\sample_processed_data\';
+
+  % Names of single experiments by directory name:
+  expnames = {
+    'CsChrSocial3_aIPg_RigF_20220923T163615'
+    'HU_Back_Ctrl_RigE_20220927T172346'
+    'HU_Back_Ctrl_RigF_20220927T172138'
+    };
+
+  % combine them to make a full path
+  expdirs = cell(size(expnames));
+  for i = 1:numel(expnames)
+    expdirs{i} = fullfile(rootdatadir,expnames{i});
+    if ~exist(expdirs{i},'dir'),
+      error('Directory %s does not exist',expdirs{i});
+    end
+  end
+  fprintf('Here is the first full exp dir:\n%s\n', expdirs{i});
+
+  data = LoadTracking(expdirs);
+
+end
+
 nexps = numel(data.exp);
 nflies = nan(1,nexps);
 for i = 1:nexps,
   nflies(i) = numel(data.exp(i).fly);
 end
+
+%% set some parameters
 
 ARENARADIUS_MM = 26.689;
 
@@ -28,44 +66,6 @@ nframespost_speed = 5*fps;
 nframespre_dist2fly = 5*fps;
 nframespost_dist2fly = 30*fps;
 
-% data: tracked positions of the flies in sample videos.
-% data is a cell with an entry for each video. data{i} is a matrix of size 
-% T x 5 x ntraj. ntraj is the number of trajectories. This ideally would be
-% the number of flies in the video, but might be more if the tracker loses
-% track of a fly for a bit. In this case, you will see a trajectory that
-% has data for the first t frames, and is nan for the rest, then a second
-% trajectory that has data only for the last T - t + 1 frames. 
-% data{i}(:,1,:) is the x-coordinate of the centroid of the fly in
-% millimeters. 
-% data{i}(:,2,:) is the y-coordinate of the centroid of the fly in
-% millimeters. 
-% data{i}(:,3,:) is the orientation of the fly in radians.
-% data{i}(:,4,:) is the angle of the fly's left wing in radians.
-% data{i}(:,5,:) is the angle of the fly's right wing in radians.
-% 
-% names: 1 x 5 cell with names of the tracking features in data. 
-%
-% sex: whether each fly is female ('f') or male ('m'). sex is a cell with
-% an entry for each video. sex{i}(j) is the sex of fly j for video i. 
-% 
-% activation: information about when the red LED panel state during the
-% experiment. struct with the following fields:
-% activation.startframes: when the LEDs turn on in frames.
-% cell with an entry for each video. 
-% activation.endframes: when the LEDs turn off in frames. cell with an
-% entry for each video.
-% activation.intensities: how bright the LEDs are during the stimulus
-% period. cell with an entry for each video. 
-% activation.pulsewidths, activation.pulseperiods: in some cases, the LEDs
-% are strobed with an on time of pulsewidth per pulseperiod, measured in
-% milliseconds. If the LED is constantly on, the pulsewidth and pulseperiod
-% will be the same. cell with an entry for each video.
-% 
-% expnames: cell with an entry for each video containing metadata about the
-% video, including fly genotype, when the data was collected, which rig it
-% was collected on. 
-% 
-% fps: frames per second. scalar. 
 
 %% plot an example fly's centroid trajectory
 
