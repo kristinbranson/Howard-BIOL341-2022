@@ -6,15 +6,16 @@ usesampledata = true;
 
 if usesampledata,
 
-  sampledatafile = 'C:\Code\Howard-BIOL341-2022\SampleData20221006.mat';
+  %sampledatafile = 'C:\Code\Howard-BIOL341-2022\SampleData20221006.mat';
+  sampledatafile = 'SampleData20221006.mat';
   load(sampledatafile);
 
 else
 
   % where the data directories are (change)
   % rootdatadir = '/groups/branson/bransonlab/alice/temp_howard';
-  % rootdatadir = 'E:\BIOL341\GoogleDrive';
-  rootdatadir = 'C:\Code\Howard-BIOL341-2022\sample_processed_data\';
+  rootdatadir = 'E:\BIOL341\GoogleDrive';
+  %rootdatadir = 'C:\Code\Howard-BIOL341-2022\sample_processed_data\';
 
   % Names of single experiments by directory name:
   expnames = {
