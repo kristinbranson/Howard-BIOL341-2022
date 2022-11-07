@@ -1,29 +1,22 @@
 function hax = PlotFeatureOverVideo(data,featname,varargin)
 
-% hax = PlotFeatureOverVideo(feat,meanfeat,activation,fps,...)
+% hax = PlotFeatureOverVideo(data,featname,...)
 % Inputs:
-% feat: cell with an entry for each video. feat{i} is the data feature for
-% video i and is a matrix of size T x ntraj. 
-% meanfeat: for each video, mean over flies of the feature. meanfeat is a
-% cell with an entry for each video, and meanfeat{i} is a T x 1 vector. 
-% activation: struct with information about activation periods for each
-% video
-% fps: frame rate of the camera
+% data: struct with the data
+% featname: field name for feature
 % Output:
 % hax: axes handles
-% optional arguments:
+% Optional arguments:
 % featlabel: string with label for y-axis (default: 'Feature (units)')
 % minfeatplot: Lower limit for y-axis (default: 0)
 % maxfeatplot: Upper limit for y-axis (default: []). If empty, will use the
 % max of all data. 
 % plotallflies: whether to plot individual flies (default: false)
 % plotstderr: whether to plot the standard error (default: true)
-% stderrfeat: for each video, standard error over flies of the feature.
-% stderrfeat is a cell with an entry for each video, and meanfeat{i} is a T
-% x 1 vector. This must be input if plotstderr is true. (default: {})
-% genotypeidx: index indicating which genotype each video is from. array of
-% size 1 x nvideos. (default: 1:nvideos)
-% expnames: names of experiments. (default: {'','',...}).
+% meanfeatname: field name for mean of feature (default:
+% ['mean_',featname])
+% stderrfeatname: field name for stderr of feature (default:
+% ['stderr_',featname])
 
 nexps = numel(data.exp);
 [featlabel,minfeatplot,maxfeatplot,plotallflies,plotstderr,...

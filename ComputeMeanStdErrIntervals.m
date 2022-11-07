@@ -1,4 +1,29 @@
 function data = ComputeMeanStdErrIntervals(data,featname,varargin)
+% data = ComputeMeanStdErrIntervals(data,featname,...)
+% For an interval around lights on/off, computes the mean, standard deviation, and standard error
+% over flies and repeats of the stimulis for the feature featname. The
+% outputs are stored in fields meanfeatname, stdfeatname, and
+% stderrfeatname
+% Inputs:
+% data: struct holding all the data
+% featname: name of feature to compute statistics for
+% Outputs: 
+% data: struct holding all the data, with the new features added
+% Optional inputs:
+% nframespre: how much before the lights on/off to include (default: 30)
+% nframespost: how much after the lights on/off to include (default: 150)
+% onset: whether to compute interval around lights on (true) or lights off
+% (false) (default: true). 
+% For the following names, if computing offset periods, replace 'on' with
+% 'off'.
+% % meanfeatname: field name for mean of feature (default:
+% ['mean_on_',featname])
+% stdfeatname: field name for std of feature (default:
+% ['std_on_',featname])
+% stderrfeatname: field name for stderr of feature (default:
+% ['stderr_on_',featname])
+% deltatname: field name to store interval information in (default:
+% ['deltat_on_',featname]
 
 nexps = numel(data.exp);
 

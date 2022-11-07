@@ -1,6 +1,6 @@
-%% Script to compare behavior of flies
+%% Script to quantify and compare behavior of flies
 
-usesampledata = false;
+usesampledata = true;
 
 %% set up paths for the expriment you want to look at and load it in
 
@@ -90,8 +90,8 @@ colormap jet;
 title(sprintf('Video %d (%s), fly %d (%s)',expnum,data.exp(expnum).summary.type,flynum,data.exp(expnum).fly(flynum).sex),'Interpreter','none');
 
 %% plot the trajectory features for an example fly as a time series
-% change these parameters to change which video amd which fly we are plotting
 
+% change these parameters to change which video amd which fly we are plotting
 expnum = 1; % which video to plot
 flynum = 7; % which fly to plot
 prct = 1; % for computing ylims
@@ -114,7 +114,7 @@ for i = 1:nfeat,
   ylim = [prctile(feat,prct),prctile(feat,100-prct)];
   PlotActivationTimePatch(data.exp(expnum).activation.startframe,data.exp(expnum).activation.endframe,fpscurr,ylim,hax(i));
   % plot the feature for the selected video and fly
-  plot((1:T)/fpscurr,feat,'k-');
+  plot((1:T)/fpscurr,feat,'k-','LineWidth',2);
   xlabel('Time (s)');
   ylabel(names{i},'Interpreter','none');
   set(hax(i),'YLim',ylim);

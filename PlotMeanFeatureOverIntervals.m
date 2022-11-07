@@ -1,4 +1,28 @@
 function hax = PlotMeanFeatureOverIntervals(data,featname,varargin)
+% hax = PlotMeanFeatureOverIntervals(data,featname,...)
+% Plots the mean feature featname around the start of each lights-on/off period.
+% Inputs:
+% data: struct with the data
+% featname: field name for feature
+% Output:
+% hax: axes handles
+% optional arguments:
+% featlabel: string with label for y-axis (default: 'Feature (units)')
+% minfeatplot: Lower limit for y-axis (default: 0)
+% maxfeatplot: Upper limit for y-axis (default: []). If empty, will use the
+% max of all data. 
+% plotstderr: whether to plot the standard error (default: true)
+% plotallflies: whether to plot individual flies (default: false)
+% For the following names, if computing offset periods, replace 'on' with
+% 'off'.
+% onset: whether to plot the onset of activation (true) or the offset
+% (false) (default: true). 
+% meanfeatname: field name for mean of feature (default:
+% ['mean_on_',featname])
+% stderrfeatname: field name for stderr of feature (default:
+% ['stderr_on_',featname])
+% deltatname: field name to store interval information in (default:
+% ['deltat_on_',featname]
 
 nexps = numel(data.exp);
 

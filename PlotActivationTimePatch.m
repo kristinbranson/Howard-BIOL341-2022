@@ -1,4 +1,7 @@
 function PlotActivationTimePatch(t0s,t1s,fps,ylim,hax)
+% PlotActivationTimePatch(t0s,t1s,fps,ylim,hax)
+% Plots a pink box over windows between t0s(i) and t1s(i) for each i, with
+% box heights defined by ylim. 
 
 lightcolor = [1,.7,.7]; % pink
 startcolor = [1,0,0];

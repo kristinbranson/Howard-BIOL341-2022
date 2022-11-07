@@ -1,4 +1,6 @@
 function hax = PlotHistogramOnVsOff(data,featname,varargin)
+% hax = PlotHistogramOnVsOff(data,featname,...)
+% Plot the on and off histograms for feature featname
 
 nexps = numel(data.exp);
 

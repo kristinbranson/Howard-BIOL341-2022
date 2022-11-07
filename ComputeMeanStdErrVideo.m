@@ -1,4 +1,10 @@
 function data = ComputeMeanStdErrVideo(data,featname,meanfeatname,stdfeatname,stderrfeatname)
+% data = ComputeMeanStdErrVideo(data,featname,meanfeatname,stdfeatname,stderrfeatname)
+% For each video, computes the mean, standard deviation, and standard error
+% over flies for the feature featname. The outputs are stored in fields meanfeatname,
+% stdfeatname, and stderrfeatname. If meanfeatname, stdfeatname, and
+% stderrfeatname are not specified, they are set to ['mean_',featname],
+% ['std_',featname], and ['stderr_',featname], respectively. 
 
 if nargin < 3,
   meanfeatname = ['mean_',featname];

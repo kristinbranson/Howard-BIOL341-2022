@@ -1,12 +1,37 @@
 function data = HistogramFeatureIntervals(data,featname,varargin)
-
+% data = HistogramFeatureIntervals(data,featname,varargin)
+% Histograms the feature featname during on/off periods and stores the
+% results in data.exp(i).hist.(fracfeatname). 
+% Inputs:
+% data: struct holding all the data
+% featname: name of feature to compute statistics for
+% Outputs: 
+% data: struct holding all the data, with the new stats added
+% Optional inputs:
+% nframespre: how much after the lights on/off to skip (can be negative) (default: 30)
+% nframespost: how much before the end of the lights on/off period to skip (default: 30)
+% on: whether to compute interval around lights on (true) or lights off
+% (false) (default: true). 
+% For the following names, if computing offset periods, replace 'on' with
+% 'off'.
+% fracfeatname: field name for normalized counts for the feature (default:
+% ['frac_on_',featname])
+% binsfeatname: field name for bin centers (default:
+% ['bincenters_on_',featname])
+% deltatname: field name to store interval information in (default:
+% ['deltat_on_',featname]
+% nbins: number of bins, only used if bincenters is not specified (default: 100)
+% binlimits: edges of the first and last bins. if [], minimum and maximum
+% of feature are used. only used if bincenters is not specified. (default: [])
+% bincenters: centers of bins. if [], uses binlimits and nbins to choose
+% bins automatically. (default: [])
 nexps = numel(data.exp);
 
 [nframespre,nframespost,tfon,fracfeatname,binsfeatname,deltatname,...
   nbins,binlimits,bincenters] = ...
   myparse(varargin,...
   'nframespre',30,...
-  'nframespost',150,...
+  'nframespost',30,...
   'on',true,...
   'fracfeatname','',...
   'binsfeatname','',...

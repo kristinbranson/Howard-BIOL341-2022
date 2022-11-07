@@ -1,14 +1,9 @@
 function PlotFeatureOverIntervals(data,featname,varargin)
-
-% hax = PlotFeatureOverIntervals(feat,meanfeat,activation,fps,...)
+% hax = PlotFeatureOverIntervals(data,featname,...)
+% Plots the feature featname around the start of each lights-on/off period.
 % Inputs:
-% feat: cell with an entry for each video. feat{i} is the data feature for
-% video i and is a matrix of size T x ntraj. 
-% meanfeat: for each video, mean over flies of the feature. meanfeat is a
-% cell with an entry for each video, and meanfeat{i} is a T x 1 vector. 
-% activation: struct with information about activation periods for each
-% video
-% fps: frame rate of the camera
+% data: struct with the data
+% featname: field name for feature
 % Output:
 % hax: axes handles
 % optional arguments:
@@ -16,13 +11,12 @@ function PlotFeatureOverIntervals(data,featname,varargin)
 % minfeatplot: Lower limit for y-axis (default: 0)
 % maxfeatplot: Upper limit for y-axis (default: []). If empty, will use the
 % max of all data. 
-% plotallflies: whether to plot individual flies (default: false)
 % plotstderr: whether to plot the standard error (default: true)
-% stderrfeat: for each video, standard error over flies of the feature.
-% stderrfeat is a cell with an entry for each video, and meanfeat{i} is a T
-% x 1 vector. This must be input if plotstderr is true. (default: {})
-% genotypeidx: index indicating which genotype each video is from. array of
-% size 1 x nvideos. (default: 1:nvideos)
+% plotallflies: whether to plot individual flies (default: false)
+% meanfeatname: field name for mean of feature (default:
+% ['mean_',featname])
+% stderrfeatname: field name for stderr of feature (default:
+% ['stderr_',featname])
 % nframespre_plot: how much before the lights on to plot (default: 1*fps)
 % nframespost_plot: how much after the lights on to plot (default: 5*fps)
 % nstimuliplot: how many stimulus periods to plot. if there are less than
