@@ -12,25 +12,29 @@ addpath(fullfile(parent_directory, 'JAABA', 'filehandling'));
 % uncomment this!
 %addpath BIOL341;
 
-%% set up paths for the expriment you want to look at
+%% set up paths for the experiment you want to look at
 
-% where the data directories are (change)
-% rootdatadir = '/groups/branson/bransonlab/alice/temp_howard';
-rootdatadir = 'E:\BIOL341\GoogleDrive';
-% Names of single experiments by directory name:
-expnames = {
-  'HU_Back_Ctrl_RigE_20220927T120006',
-  };
+% select directories containing your data using the GUI
+rootdatadir = 'C:\Users\loaner\Desktop';
+expdirs = uigetfile_n_dir(rootdatadir);
+if isempty(expdirs),
+  error('No directories selected');
+end
 
-% combine them to make a full path
-expdirs = cell(size(expnames));
-for i = 1:numel(expnames)
-  expdirs{i} = fullfile(rootdatadir,expnames{i});
-  if ~exist(expdirs{i},'dir'),
-    error('Directory %s does not exist',expdirs{i});
+expnames = cell(size(expdirs));
+for i = 1:numel(expdirs),
+  [~,expnames{i}] = fileparts(expdirs{i});
+  trxfile = fullfile(expdirs{i},'movie','movie_JAABA','trx.mat');
+  if ~exist(trxfile,'file'),
+    error('Experiment directory %s is not tracked yet.',expdirs{i});
   end
 end
-fprintf('Here is the first full exp dir:\n%s\n', expdirs{i})
+
+fprintf('Selected %d directories:\n',numel(expdirs))
+for i = 1:numel(expdirs),
+  fprintf('%s\n',expdirs{i});
+end
+
 %% look at a video
 
 % pick a movie (1 - number of expnames)
@@ -120,11 +124,20 @@ axis image off;
 
 %% plot trajectories
 
+maxnflies_plot = 15;
 data = LoadTracking(expdirs);
 T = max(data.summary.exps.nframes); % max number of frames in the movie
 nflies = size(data.summary.flies,1); % total number of flies in all movies
 nc = 5; % number of columns to plot in supbplot
-nr = ceil(nflies/nc); % number of rows
+
+% if there are a lot of flies, just plot a subset
+if nflies > maxnflies_plot,
+  fliesplot = round(linspace(1,nflies,maxnflies_plot));
+else
+  fliesplot = 1:nflies;
+end
+nfliesplot = numel(fliesplot);
+nr = ceil(nfliesplot/nc); % number of rows
 
 % for all expriments get the minimal and maximal timestamp so we could plot
 % them all together without clipping
@@ -142,10 +155,14 @@ fprintf('Global time starts from %.2f seconds to %.2f seconds \n', mintimestamp,
 figure(2);
 clf;
 % prepare an array of graphics objects to put the plots in
-hax = gobjects(nflies,1); 
+hax = gobjects(nfliesplot,1); 
 maxr = 0;
-% loop over flies (combined from all experiments)
-for flyi = 1:nflies
+% loop over flies to plot (combined from all experiments)
+for flyii = 1:nfliesplot,
+
+    % choose a fly
+    flyi = fliesplot(flyii);
+
     % get 1 track x and y in millimiters
     expnum = data.summary.flies.expnum(flyi);
     flynum = data.summary.flies.flynum(flyi);
@@ -153,7 +170,7 @@ for flyi = 1:nflies
     % plot the track as black line
     x = trk.x_mm;
     y = trk.y_mm;
-    hax(flyi) = subplot(nr,nc,flyi);
+    hax(flyii) = subplot(nr,nc,flyii);
     plot(x, y,'k-');
     % add the time of each frame as colors
     timestamps = data.exp(expnum).timestamps;

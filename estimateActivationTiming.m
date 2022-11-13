@@ -25,21 +25,23 @@ if isempty(offsetRed),
   end
 end
 
-if useDataCaptureInfo,
-  timinginfofile = fullfile(expdir,stimulistimingfilestr);
-  [camerastart_datetime,protocolstart_datetime,...
-    pulsestart_datetime,~] = ...
-    readTimingFile(timinginfofile);
-end
-
+timinginfofile = fullfile(expdir,stimulistimingfilestr);
 protocolfile = fullfile(expdir,protocolfilestr);
-if ~exist(protocolfile,'file'),
+
+if ~exist(timinginfofile,'file') || ~exist(protocolfile,'file'),
   % no protocolfile, probably not a chrimson experiment
   indicatorLED = [];
   isPerStepControl = [];
   isRGB = [];
   return;
 end
+
+if useDataCaptureInfo,
+  [camerastart_datetime,protocolstart_datetime,...
+    pulsestart_datetime,~] = ...
+    readTimingFile(timinginfofile);
+end
+
 pd = load(protocolfile);
 % returns seconds since protocol started
 [starttimes,endtimes,intensity,pulsewidths,pulseperiods,...

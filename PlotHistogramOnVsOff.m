@@ -32,7 +32,7 @@ end
 exptypecolors = lines(numel(exptypes));
 offcolor = [0,0,0];
 
-naxc = 2;
+naxc = min(nexps,2);
 naxr = ceil(nexps/naxc);
 
 hax = gobjects(naxc,naxr);

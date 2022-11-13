@@ -27,7 +27,7 @@ nexps = numel(data.exp);
   'stdferreatname',['stderr_',featname]);
 
 clf;
-naxc = 2;
+naxc = min(nexps,2);
 naxr = ceil(nexps/naxc);
 if isempty(maxfeatplot),
   maxfeatplot = FeaturePrctiles(data,featname,100);
@@ -85,6 +85,6 @@ for i = 1:nexps,
   set(hax(i),'YLim',ylim,'XLim',[0,(T+1)/fps])
 end
 % all axes forced to have the same y limits
-linkaxes(hax,'y');
+linkaxes(hax(1:nexps),'y');
 xlabel(hax(1,end),'Time (s)');
 ylabel(hax(1,end),featlabel);

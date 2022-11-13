@@ -166,12 +166,13 @@ outnames_perframe =  {'x_px','y_px','theta_rad','a_px','b_px','xwingl_px','ywing
 innames_perframe = {'x',   'y',   'theta',    'a',   'b',   'xwingl',   'ywingl',   'xwingr',   'ywingr'   ,'wing_anglel',    'wing_angler'};
 outnames_perframe = [copy_perframe,outnames_perframe];
 innames_perframe = [copy_perframe,innames_perframe];
+activation_vars = {'expnum','intervalnum','startframe','endframe','intensity','pulsewidth','pulseperiod'};
 
 sexes = {'f','m'};
 
 data.summary.exps = [];
 data.summary.flies = [];
-data.summary.activation = [];
+data.summary.activation = array2table(zeros(0,numel(activation_vars)),'VariableNames',activation_vars);
 for expi = 1:nexps,
   expdir = expdirs{expi};
   [~,expname] = fileparts(expdir);
@@ -237,15 +238,15 @@ for expi = 1:nexps,
   end
 
   % activation
-  expcurr.activation = [];
+  expcurr.activation = array2table(zeros(0,numel(activation_vars)-2),'VariableNames',activation_vars(3:end));
   if isopto,
     for inti = 1:numel(ind.indicatorLED.startframe),
       row = [expi, inti, ind.indicatorLED.startframe(inti), ind.indicatorLED.endframe(inti), ...
         ind.indicatorLED.intensity(inti), ind.indicatorLED.pulsewidths(inti), ...
         ind.indicatorLED.pulseperiods(inti)];
-      tab = array2table(row,'VariableNames',{'expnum','intervalnum','startframe','endframe','intensity','pulsewidth','pulseperiod'});
+      tab = array2table(row,'VariableNames',activation_vars);
       data.summary.activation = [data.summary.activation; tab];
-      tab = array2table(row(3:end),'VariableNames',{'startframe','endframe','intensity','pulsewidth','pulseperiod'});
+      tab = array2table(row(3:end),'VariableNames',activation_vars(3:end));
       expcurr.activation = [expcurr.activation; tab];
     end
   end
