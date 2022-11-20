@@ -1,4 +1,4 @@
-function PlotActivationTimePatch(t0s,t1s,fps,ylim,hax)
+function h = PlotActivationTimePatch(t0s,t1s,fps,ylim,hax)
 % PlotActivationTimePatch(t0s,t1s,fps,ylim,hax)
 % Plots a pink box over windows between t0s(i) and t1s(i) for each i, with
 % box heights defined by ylim. 
@@ -15,7 +15,8 @@ for j = 1:numel(t0s),
 end
 
 % plot starts of activation periods
+hline = gobjects(numel(t0s),1);
 for j = 1:numel(t0s),
   t0 = t0s(j);
-  plot(hax,[t0,t0]/fps,ylim,'-','Color',startcolor,'LineWidth',startlw);
+  hline(j) = plot(hax,[t0,t0]/fps,ylim,'-','Color',startcolor,'LineWidth',startlw);
 end
