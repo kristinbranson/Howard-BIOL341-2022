@@ -159,13 +159,13 @@ if ~isempty(data.summary.activation),
   hax(2) = subplot(3,1,2);
   fn = ['fractime_on_',behaviorname];
   PlotFracTime(data,fn,'ax',hax(2),'noise',noise);
-  title(hax,sprintf('%s, activation on',behaviorname));
+  title(hax(2),sprintf('%s, activation on',behaviorname));
 
   % plot fraction of time for off frames
   hax(3) = subplot(3,1,3);
   fn = ['fractime_off_',behaviorname];
   PlotFracTime(data,fn,'ax',hax(3),'noise',noise);
-  title(hax,sprintf('%s, activation off',behaviorname));
+  title(hax(3),sprintf('%s, activation off',behaviorname));
 end
 
 linkaxes(hax);
